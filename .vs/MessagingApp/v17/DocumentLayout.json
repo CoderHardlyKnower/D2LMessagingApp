@@ -1,0 +1,134 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|c:\\users\\tristan\\documents\\application project\\messagingapp\\messagingapp\\views\\home\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|solutionrelative:messagingapp\\views\\home\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|c:\\users\\tristan\\documents\\application project\\messagingapp\\messagingapp\\models\\message.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|solutionrelative:messagingapp\\models\\message.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|c:\\users\\tristan\\documents\\application project\\messagingapp\\messagingapp\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|solutionrelative:messagingapp\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|c:\\users\\tristan\\documents\\application project\\messagingapp\\messagingapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|solutionrelative:messagingapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|c:\\users\\tristan\\documents\\application project\\messagingapp\\messagingapp\\controllers\\homecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|solutionrelative:messagingapp\\controllers\\homecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|c:\\users\\tristan\\documents\\application project\\messagingapp\\messagingapp\\data\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4BCD5BE7-3292-4F09-8BF5-8DBAECCBB713}|MessagingApp\\MessagingApp.csproj|solutionrelative:messagingapp\\data\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 4,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "HomeController.cs",
+              "DocumentMoniker": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\Controllers\\HomeController.cs",
+              "RelativeDocumentMoniker": "MessagingApp\\Controllers\\HomeController.cs",
+              "ToolTip": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\Controllers\\HomeController.cs",
+              "RelativeToolTip": "MessagingApp\\Controllers\\HomeController.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAACYAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-22T20:28:26.075Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Index.cshtml",
+              "DocumentMoniker": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\Views\\Home\\Index.cshtml",
+              "RelativeDocumentMoniker": "MessagingApp\\Views\\Home\\Index.cshtml",
+              "ToolTip": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\Views\\Home\\Index.cshtml",
+              "RelativeToolTip": "MessagingApp\\Views\\Home\\Index.cshtml",
+              "ViewState": "AQIAAD8AAAAAAAAAAAAAAFQAAABeAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-01-22T19:35:27.652Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Message.cs",
+              "DocumentMoniker": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\Models\\Message.cs",
+              "RelativeDocumentMoniker": "MessagingApp\\Models\\Message.cs",
+              "ToolTip": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\Models\\Message.cs",
+              "RelativeToolTip": "MessagingApp\\Models\\Message.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAkAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-22T19:32:38.603Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "AppDbContext.cs",
+              "DocumentMoniker": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\Data\\AppDbContext.cs",
+              "RelativeDocumentMoniker": "MessagingApp\\Data\\AppDbContext.cs",
+              "ToolTip": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\Data\\AppDbContext.cs",
+              "RelativeToolTip": "MessagingApp\\Data\\AppDbContext.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAkAAAA1AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-22T19:31:06.193Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\appsettings.json",
+              "RelativeDocumentMoniker": "MessagingApp\\appsettings.json",
+              "ToolTip": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\appsettings.json",
+              "RelativeToolTip": "MessagingApp\\appsettings.json",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAwAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-01-22T19:23:09.803Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\Program.cs",
+              "RelativeDocumentMoniker": "MessagingApp\\Program.cs",
+              "ToolTip": "C:\\Users\\Tristan\\Documents\\Application Project\\MessagingApp\\MessagingApp\\Program.cs",
+              "RelativeToolTip": "MessagingApp\\Program.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAoAAAAYAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-01-22T19:10:29.557Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
