@@ -38,7 +38,7 @@ In Visual Studio, go to Tools > NuGet Package Manager > Manage NuGet Packages fo
 Entity Framework Core
 Entity Framework Core.Tools
 Entity Framework Core.sqlServer
----
+
 Additionally, you'll need to create your own instance of "appsettings.json"
 - Right-click on the Project in the Solution Explorer
 - add > New Item
