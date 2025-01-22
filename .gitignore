@@ -1,0 +1,21 @@
+# Visual Studio-specific files
+.vs/
+*.user
+*.suo
+
+# Build directories
+bin/
+obj/
+*.dll
+*.exe
+
+# Configuration files
+appsettings.json
+appsettings.*.json
+
+# System files
+*.DS_Store
+Thumbs.db
+
+# Logs
+*.log
