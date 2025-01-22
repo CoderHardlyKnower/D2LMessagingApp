@@ -36,9 +36,14 @@ The project will load in Visual Studio.
 
 ## Restore NuGet Packages
 In Visual Studio, go to Tools > NuGet Package Manager > Manage NuGet Packages for Solution.
+-You should have installed
+Entity Framework Core
+Entity Framework Core.Tools
+Entity Framework Core.sqlServer
 
-Addionally, you'll need to create your own instance of "appsettings.json"
-- Right click on the Project in the solution explorer
+
+Additionally, you'll need to create your own instance of "appsettings.json"
+- Right-click on the Project in the Solution Explorer
 - add > New Item
 - Find JSON file
 - Name it appsettings.json
