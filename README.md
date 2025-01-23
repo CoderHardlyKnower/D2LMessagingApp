@@ -13,7 +13,7 @@
    - [Git](https://git-scm.com/).
 
  **Local Environment**:
-   - Ensure a local instance of SQL Server is running. (E.g., `SQLEXPRESS` or another instance).
+   - Ensure a local instance of SQL Server is running. (E.g., `SQLEXPRESS`).
 
 ---
 
@@ -24,14 +24,14 @@ Open command prompt and navigate to the folder where you want to save the projec
 Run the command: git clone https://github.com/CoderHardlyKnower/D2LMessagingApp.git
 This will download the project files into a folder named D2LMessagingApp. 
 Then, navigate into this folder by running:  cd D2LMessagingApp
----
+
 ## Open in visual studio
 Open the Project in Visual Studio
 Launch Visual Studio 2022.
 Click File > Open > Project/Solution.
 Navigate to the folder where you cloned the repository and select MessagingApp.sln.
 The project will load in Visual Studio.
----
+
 ## Restore NuGet Packages
 In Visual Studio, go to Tools > NuGet Package Manager > Manage NuGet Packages for Solution.
 -You should have installed
@@ -59,6 +59,7 @@ Add this code to the file:
   },
   "AllowedHosts": "*"
 }
+IMPORTANT:
 Replace "YOUR_SERVER_NAME_HERE" with your sql server name
 
 ## Apply database migrations
