@@ -18,26 +18,24 @@
 ---
 
 ## Steps to Clone and Run the App
-Clone the Repository
-Open command prompt and navigate to the folder where you want to save the project. 
+- Clone the Repository
+- Open command prompt and navigate to the folder where you want to save the project. 
 (e.g. cd "C:\Users\<YourUsername>\Documents")
-Run the command: git clone https://github.com/CoderHardlyKnower/D2LMessagingApp.git
-This will download the project files into a folder named D2LMessagingApp. 
-Then, navigate into this folder by running:  cd D2LMessagingApp
+- Run the command: git clone https://github.com/CoderHardlyKnower/D2LMessagingApp.git
+- This will download the project files into a folder named D2LMessagingApp. 
+- Then, navigate into this folder by running:  cd D2LMessagingApp
 
 ## Open in visual studio
-Open the Project in Visual Studio
-Launch Visual Studio 2022.
-Click File > Open > Project/Solution.
-Navigate to the folder where you cloned the repository and select MessagingApp.sln.
-The project will load in Visual Studio.
+- Launch Visual Studio 2022.
+- Click File > Open > Project/Solution.
+-Navigate to the folder where you cloned the repository and select MessagingApp.sln.
 
 ## Restore NuGet Packages
 In Visual Studio, go to Tools > NuGet Package Manager > Manage NuGet Packages for Solution.
 -You should have installed
-Entity Framework Core
-Entity Framework Core.Tools
-Entity Framework Core.sqlServer
+ -Entity Framework Core
+ -Entity Framework Core.Tools
+ -Entity Framework Core.sqlServer
 
 Additionally, you'll need to create your own instance of "appsettings.json"
 - Right-click on the Project in the Solution Explorer
@@ -63,6 +61,6 @@ IMPORTANT:
 Replace "YOUR_SERVER_NAME_HERE" with your sql server name
 
 ## Apply database migrations
-Open the Package Manager Console 
-Run this command: Update-Database
-This will set up the MessagingAppDB database in your local SQL Server.
+- Open the Package Manager Console 
+- Run this command: Update-Database
+- This will set up the MessagingAppDB database in your local SQL Server, select https and run
