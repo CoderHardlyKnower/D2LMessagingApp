@@ -1,17 +1,20 @@
 ﻿@model IEnumerable<MessagingApp.Models.Course>
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MessagingApp</title>
+    <title>Course Selection - MessagingApp</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f9;
             margin: 0;
-            padding: 20px;
+            padding: 20px:
         }
 
         h1 {
@@ -27,14 +30,14 @@
             transition: all 0.3s ease;
         }
 
-        .course h3 {
-            margin-top: 10px;
-            color: #000;
-        }
+            .course h3 {
+                margin-top: 10px;
+                color: #000;
+            }
 
-        .course:hover {
-           transform: scale(1.05);
-        }
+            .course:hover {
+                transform: scale(1.05);
+            }
     </style>
 </head>
 <body>
@@ -42,8 +45,8 @@
     <div class="d-flex flex-wrap justify-content-evenly">
         @foreach (var course in Model)
         {
-            <a class="cursor-pointer text-decoration-none d-flex flex-column justify-content-center align-items-center"  
-            asp-action="ClassList" sp-controller="Home" asp-route-id="@course.Id">
+            <a class="cursor-pointer text-decoration-none d-flex flex-column justify-content-center align-items-center"
+               asp-action="ClassList" asp-controller="Courses" asp-route-id="@course.Id">
                 <div class="course shadow-lg mb-2" style="background-color: @GetRandomColor()"></div>
                 <h3 class="text-black text-decoration-none">@course.Name</h3>
             </a>
@@ -51,13 +54,12 @@
     </div>
 
     @functions {
-        public string GetRandomColor() //Generate random hex code for background of course div
+        public string GetRandomColor() // Generate random hex code for course div
         {
             var random = new Random();
             var hex = $"#{random.Next(0x1000000):X6}";
             return hex;
-        } 
+        }
     }
 </body>
 </html>
-
