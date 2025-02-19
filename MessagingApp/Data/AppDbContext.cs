@@ -17,6 +17,11 @@ namespace MessagingApp.Data
             // Define a composite primary key for Enrollment
             modelBuilder.Entity<Enrollment>().HasKey(e => new { e.UserId, e.CourseId });
 
+            modelBuilder.Entity<Course>()
+                .HasOne(c => c.CourseInstructor)
+                .WithMany() // No navigation property for Courses on User
+                .HasForeignKey("CourseInstructorUserId")
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

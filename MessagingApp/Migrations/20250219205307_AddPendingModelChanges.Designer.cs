@@ -4,6 +4,7 @@ using MessagingApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MessagingApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250219205307_AddPendingModelChanges")]
+    partial class AddPendingModelChanges
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -41,7 +44,7 @@ namespace MessagingApp.Migrations
 
                     b.HasIndex("CourseInstructorUserId");
 
-                    b.ToTable("Courses", (string)null);
+                    b.ToTable("Courses");
                 });
 
             modelBuilder.Entity("MessagingApp.Models.Enrollment", b =>
@@ -56,7 +59,7 @@ namespace MessagingApp.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.ToTable("Enrollments", (string)null);
+                    b.ToTable("Enrollments");
                 });
 
             modelBuilder.Entity("MessagingApp.Models.Message", b =>
@@ -76,7 +79,7 @@ namespace MessagingApp.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Messages", (string)null);
+                    b.ToTable("Messages");
                 });
 
             modelBuilder.Entity("MessagingApp.Models.User", b =>
@@ -101,7 +104,7 @@ namespace MessagingApp.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("MessagingApp.Models.Course", b =>
