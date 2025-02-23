@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MessagingApp.Controllers
@@ -9,6 +10,7 @@ namespace MessagingApp.Controllers
 
     public class HomeController : Controller
     {
+        [Authorize]
         public IActionResult Index()
         {
             return RedirectToAction("LandingPage", "Courses");
