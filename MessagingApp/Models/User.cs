@@ -24,7 +24,6 @@
         // Parameterless constructor for EF Core
         public User() { }
 
-        // Convenience constructor for backward compatibility (e.g., used in CoursesController)
         // This one only sets the Name and leaves Email/Password with default empty strings.
         public User(string name)
         {
