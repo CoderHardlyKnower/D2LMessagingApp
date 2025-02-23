@@ -1,23 +1,21 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
+using MessagingApp.Data;
+using MessagingApp.Models;
 using System.Security.Claims;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 
 namespace MessagingApp.Controllers
 {
     public class AccountController : Controller
     {
-        // A simple hardcoded dictionary of users and passwords.
-        // In our simulated environment, these represent team member accounts.
-        private readonly Dictionary<string, string> validUsers = new Dictionary<string, string>
+        private readonly AppDbContext _context;
+
+        public AccountController(AppDbContext context)
         {
-            {"Austin", "password1"},
-            {"Khemara", "password2"},
-            {"Amanda", "password3"},
-            {"Tristan", "password4"}
-        };
+            _context = context;
+        }
 
         // GET: /Account/Login
         [HttpGet]
@@ -29,21 +27,25 @@ namespace MessagingApp.Controllers
         // POST: /Account/Login
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(string username, string password)
+        public async Task<IActionResult> Login(string email, string password)
         {
-            // Check against the hardcoded users.
-            if (validUsers.ContainsKey(username) && validUsers[username] == password)
+            // Lookup user dynamically from the database using email.
+            var user = await _context.Users.SingleOrDefaultAsync(u => u.Email == email);
+            if (user != null && user.Password == password)
             {
-                // Create claims for the authenticated user.
+                // Create claims; note that ClaimTypes.Name uses the users full name
                 var claims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.Name, username)
+                    new Claim(ClaimTypes.Name, user.Name),  // Use full name
+                    new Claim("UserId", user.UserId.ToString()),
+                    new Claim("UserType", user.UserType ?? "")
                 };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
                 var authProperties = new AuthenticationProperties
                 {
-                    IsPersistent = true // Simulate persistent login.
+                    IsPersistent = true // This simulates persistent login.
                 };
 
                 await HttpContext.SignInAsync(
@@ -51,11 +53,11 @@ namespace MessagingApp.Controllers
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
-                // Redirect to Home (or a default authenticated page).
+                // Redirect to Home after successful login.
                 return RedirectToAction("Index", "Home");
             }
 
-            // If login fails, show an error.
+            // If login fails, add an error and return to the view.
             ModelState.AddModelError(string.Empty, "Invalid login attempt.");
             return View();
         }

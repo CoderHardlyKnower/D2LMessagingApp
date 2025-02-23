@@ -41,7 +41,7 @@ namespace MessagingApp.Migrations
 
                     b.HasIndex("CourseInstructorUserId");
 
-                    b.ToTable("Courses", (string)null);
+                    b.ToTable("Courses");
                 });
 
             modelBuilder.Entity("MessagingApp.Models.Enrollment", b =>
@@ -56,7 +56,7 @@ namespace MessagingApp.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.ToTable("Enrollments", (string)null);
+                    b.ToTable("Enrollments");
                 });
 
             modelBuilder.Entity("MessagingApp.Models.Message", b =>
@@ -76,7 +76,7 @@ namespace MessagingApp.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Messages", (string)null);
+                    b.ToTable("Messages");
                 });
 
             modelBuilder.Entity("MessagingApp.Models.User", b =>
@@ -90,7 +90,15 @@ namespace MessagingApp.Migrations
                     b.Property<int?>("CourseId")
                         .HasColumnType("int");
 
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Password")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -101,7 +109,7 @@ namespace MessagingApp.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("MessagingApp.Models.Course", b =>
@@ -109,7 +117,7 @@ namespace MessagingApp.Migrations
                     b.HasOne("MessagingApp.Models.User", "CourseInstructor")
                         .WithMany()
                         .HasForeignKey("CourseInstructorUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("CourseInstructor");

@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using MessagingApp.Data;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using MessagingApp.Models;
+
 
 
 
@@ -42,5 +44,24 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    
+    context.Database.Migrate();
+
+    // Seed Users if none exist.
+    if (!context.Users.Any())
+    {
+        context.Users.AddRange(new List<User>
+        {
+            new User("Austin Brown", "Abrown9034@conestogac.on.ca", "password1", "student"),
+            new User("Khemara Koeun", "Koeun8402@conestogac.on.ca", "password2", "student"),
+            new User("Amanda Esteves", "Aesteves3831@conestogac.on.ca", "password3", "student"),
+            new User("Tristan Lagace", "Tlagace9030@conestogac.on.ca", "password4", "student")
+        });
+        context.SaveChanges();
+    }
+}
 
 app.Run();

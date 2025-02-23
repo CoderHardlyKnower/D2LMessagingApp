@@ -17,11 +17,13 @@ namespace MessagingApp.Data
             // Define a composite primary key for Enrollment
             modelBuilder.Entity<Enrollment>().HasKey(e => new { e.UserId, e.CourseId });
 
+            // Configure the Course - CourseInstructor relationship using a shadow foreign key.
+            // This ensures that deleting a User (instructor) does not cascade and delete Courses.
             modelBuilder.Entity<Course>()
                 .HasOne(c => c.CourseInstructor)
-                .WithMany() // No navigation property for Courses on User
+                .WithMany() // No navigation property on User for courses they instruct
                 .HasForeignKey("CourseInstructorUserId")
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.NoAction);
         }
     }
 }
