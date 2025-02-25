@@ -33,19 +33,21 @@ namespace MessagingApp.Controllers
             var user = await _context.Users.SingleOrDefaultAsync(u => u.Email == email);
             if (user != null && user.Password == password)
             {
-                // Create claims; note that ClaimTypes.Name uses the users full name
+                // Create claims: use full name for display (ClaimTypes.Name)
+                // and store the email in a separate "Email" claim.
                 var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, user.Name),  // Use full name
-                    new Claim("UserId", user.UserId.ToString()),
-                    new Claim("UserType", user.UserType ?? "")
-                };
+        {
+            new Claim(ClaimTypes.Name, user.Name),  // For display in header
+            new Claim("Email", user.Email),           // For filtering in CoursesController
+            new Claim("UserId", user.UserId.ToString()),
+            new Claim("UserType", user.UserType ?? "")
+        };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
                 var authProperties = new AuthenticationProperties
                 {
-                    IsPersistent = true // This simulates persistent login.
+                    IsPersistent = true // Simulate persistent login.
                 };
 
                 await HttpContext.SignInAsync(

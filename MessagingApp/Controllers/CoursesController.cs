@@ -23,7 +23,7 @@ namespace MessagingApp.Controllers
 
             // Create our objects corresponding to seeded accounts.
             var userAustin = new User("Austin Brown") { UserId = 1, UserType = "student", Email = "Abrown9034@conestogac.on.ca" };
-            var userKhemara = new User("Khemara Koeun") { UserId = 2, UserType = "student", Email = "Koeun8402@conestogac.on.ca" };
+            var userKhemara = new User("Khemara Oeun") { UserId = 2, UserType = "student", Email = "Koeun8402@conestogac.on.ca" };
             var userAmanda = new User("Amanda Esteves") { UserId = 3, UserType = "student", Email = "Aesteves3831@conestogac.on.ca" };
             var userTristan = new User("Tristan Lagace") { UserId = 4, UserType = "student", Email = "Tlagace9030@conestogac.on.ca" };
 
@@ -52,11 +52,14 @@ namespace MessagingApp.Controllers
                 return NotFound();
             }
 
-            // Remove logged-in user from the student list.
+            // Remove logged-in user from the student list using the Email claim.
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
-                var currentUserEmail = User.Identity.Name;
-                course.Students = course.Students.Where(s => s.Email != currentUserEmail).ToList();
+                var currentUserEmail = User.FindFirst("Email")?.Value;
+                if (!string.IsNullOrEmpty(currentUserEmail))
+                {
+                    course.Students = course.Students.Where(s => s.Email != currentUserEmail).ToList();
+                }
             }
             return View(course);
         }
