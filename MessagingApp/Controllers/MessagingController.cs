@@ -24,8 +24,25 @@ namespace MessagingApp.Controllers
         // Display messaging page for the selected student
         public IActionResult Index(int studentId, string studentName)
         {
-            // For now, we display all messages; later, filter by conversation.
-            var messages = _context.Messages.ToList();
+            // Get the logged-in user's ID from claims.
+            int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
+
+            // Retrieve messages only between the logged-in user and the selected student.
+            var messages = _context.Messages
+                .Where(m => (m.SenderId == loggedInUserId && m.ReceiverId == studentId) ||
+                            (m.SenderId == studentId && m.ReceiverId == loggedInUserId))
+                .OrderBy(m => m.Timestamp)
+                .ToList();
+
+            // Build a dictionary mapping sender IDs to names.
+            // Get all distinct sender IDs from the messages.
+            var senderIds = messages.Select(m => m.SenderId).Distinct().ToList();
+            // Query the Users table for those sender IDs.
+            var userNames = _context.Users
+                .Where(u => senderIds.Contains(u.UserId))
+                .ToDictionary(u => u.UserId, u => u.Name);
+
+            ViewBag.UserNames = userNames;
             ViewBag.StudentName = studentName;
             ViewBag.StudentId = studentId;
             return View(messages);
@@ -38,11 +55,19 @@ namespace MessagingApp.Controllers
         {
             if (!string.IsNullOrEmpty(content))
             {
-                var message = new Message { Content = content, Timestamp = DateTime.Now };
+                int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
+                var message = new Message
+                {
+                    Content = content,
+                    Timestamp = DateTime.Now,
+                    SenderId = loggedInUserId,
+                    ReceiverId = studentId
+                };
                 _context.Messages.Add(message);
                 _context.SaveChanges();
             }
             return RedirectToAction("Index", new { studentId, studentName });
         }
     }
+    
 }

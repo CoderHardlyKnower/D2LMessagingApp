@@ -1,8 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MessagingApp.Data;
 using MessagingApp.Models;
-using System.Collections.Generic;
-using System.Linq;
+
 
 namespace MessagingApp.Controllers
 {
@@ -22,16 +21,20 @@ namespace MessagingApp.Controllers
         {
             _context = context;
 
-            // Hardcoded data with explicit IDs and UserType assignments for routing and clarity
-            User student1 = new User("John") { UserId = 1, UserType = "student" };
-            User student2 = new User("Alice") { UserId = 2, UserType = "student" };
-            User instructor = new User("Bob") { UserId = 3, UserType = "instructor" };
-            users.AddRange(new List<User> { student1, student2, instructor });
+            // Create our objects corresponding to seeded accounts.
+            var userAustin = new User("Austin Brown") { UserId = 1, UserType = "student", Email = "Abrown9034@conestogac.on.ca" };
+            var userKhemara = new User("Khemara Koeun") { UserId = 2, UserType = "student", Email = "Koeun8402@conestogac.on.ca" };
+            var userAmanda = new User("Amanda Esteves") { UserId = 3, UserType = "student", Email = "Aesteves3831@conestogac.on.ca" };
+            var userTristan = new User("Tristan Lagace") { UserId = 4, UserType = "student", Email = "Tlagace9030@conestogac.on.ca" };
 
-            // Hardcoded courses
-            Course course1 = new Course(1, "Web programming", instructor, new List<User> { student1, student2 });
-            Course course2 = new Course(2, "C#", instructor, new List<User> { student2 });
-            courses.AddRange(new List<Course> { course1, course2 });
+            // For instructor, we'll use a hardcoded user or another seeded user.
+            var instructor = new User("Bob") { UserId = 5, UserType = "instructor", Email = "bob@conestogac.on.ca" };
+
+            // Create courses – each course includes all four of us as students.
+            var course1 = new Course(1, "Web Programming", instructor, new List<User> { userAustin, userKhemara, userAmanda, userTristan });
+            var course2 = new Course(2, "C#", instructor, new List<User> { userAustin, userKhemara, userAmanda, userTristan });
+            courses.Add(course1);
+            courses.Add(course2);
         }
 
         // Landing page: display list of courses (course selection)
@@ -47,6 +50,13 @@ namespace MessagingApp.Controllers
             if (course == null)
             {
                 return NotFound();
+            }
+
+            // Remove logged-in user from the student list.
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                var currentUserEmail = User.Identity.Name;
+                course.Students = course.Students.Where(s => s.Email != currentUserEmail).ToList();
             }
             return View(course);
         }
