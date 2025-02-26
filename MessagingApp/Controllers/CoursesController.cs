@@ -1,67 +1,89 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MessagingApp.Data;
 using MessagingApp.Models;
-
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 
 namespace MessagingApp.Controllers
 {
     public class CoursesController : Controller
     {
         /// <summary>
-        /// CoursesController manages the course selection and class list pages
-        /// We are currently using hardcoded data for demonstration purposes for iteration 1
+        /// CoursesController manages course selection and class lists.
         /// </summary>
-
         private readonly AppDbContext _context;
-
-        private List<User> users = new List<User>();
-        private List<Course> courses = new List<Course>();
 
         public CoursesController(AppDbContext context)
         {
             _context = context;
-
-            // Create our objects corresponding to seeded accounts.
-            var userAustin = new User("Austin Brown") { UserId = 1, UserType = "student", Email = "Abrown9034@conestogac.on.ca" };
-            var userKhemara = new User("Khemara Oeun") { UserId = 2, UserType = "student", Email = "Koeun8402@conestogac.on.ca" };
-            var userAmanda = new User("Amanda Esteves") { UserId = 3, UserType = "student", Email = "Aesteves3831@conestogac.on.ca" };
-            var userTristan = new User("Tristan Lagace") { UserId = 4, UserType = "student", Email = "Tlagace9030@conestogac.on.ca" };
-
-            // For instructor, we'll use a hardcoded user or another seeded user.
-            var instructor = new User("Bob") { UserId = 5, UserType = "instructor", Email = "bob@conestogac.on.ca" };
-
-            // Create courses – each course includes all four of us as students.
-            var course1 = new Course(1, "Web Programming", instructor, new List<User> { userAustin, userKhemara, userAmanda, userTristan });
-            var course2 = new Course(2, "C#", instructor, new List<User> { userAustin, userKhemara, userAmanda, userTristan });
-            courses.Add(course1);
-            courses.Add(course2);
         }
 
-        // Landing page: display list of courses (course selection)
-        public IActionResult LandingPage()
+        // Landing page: display list of courses the logged in student is enrolled in.
+        public async Task<IActionResult> LandingPage()
         {
+            int userId = GetStudentId();
+            var courses = await GetStudentCourses(userId);
             return View("CourseSelection", courses);
         }
 
-        // Class list: display details (instructor and students) for a selected course
-        public IActionResult ClassList(int id)
+        // Class list: display details (instructor and students) for a selected course.
+        // Excludes the logged-in user from the student list.
+        public async Task<IActionResult> ClassList(int id)
         {
-            var course = courses.FirstOrDefault(x => x.Id == id);
+            // Fetch the course along with its instructor.
+            var course = await _context.Courses
+                .Include(c => c.CourseInstructor)
+                .FirstOrDefaultAsync(x => x.CourseId == id);
+
             if (course == null)
             {
                 return NotFound();
             }
 
-            // Remove logged-in user from the student list using the Email claim.
-            if (User.Identity != null && User.Identity.IsAuthenticated)
+            // Fetch all enrolled students.
+            var allStudents = await GetEnrolledStudents(course.CourseId);
+
+            // Exclude the logged-in student.
+            int userId = GetStudentId();
+            var students = allStudents.Where(s => s.UserId != userId).ToList();
+
+            var viewModel = new ClassListViewModel
             {
-                var currentUserEmail = User.FindFirst("Email")?.Value;
-                if (!string.IsNullOrEmpty(currentUserEmail))
-                {
-                    course.Students = course.Students.Where(s => s.Email != currentUserEmail).ToList();
-                }
-            }
-            return View(course);
+                Course = course,
+                Instructor = course.CourseInstructor,
+                Students = students
+            };
+
+            return View(viewModel);
+        }
+
+        // Retrieve the courses the logged-in student is enrolled in.
+        public async Task<List<Course>> GetStudentCourses(int userId)
+        {
+            var courses = await _context.Enrollments
+                .Where(e => e.UserId == userId)
+                .Select(e => e.Course)
+                .ToListAsync();
+            return courses;
+        }
+
+        // Retrieve the list of students enrolled in a given course.
+        public async Task<List<User>> GetEnrolledStudents(int courseId)
+        {
+            var students = await _context.Enrollments
+                .Where(e => e.CourseId == courseId)
+                .Select(e => e.User)
+                .ToListAsync();
+            return students;
+        }
+
+        // Retrieve logged in student's ID from claims.
+        int GetStudentId()
+        {
+            var userIdString = User.FindFirst("UserId")?.Value;
+            return int.Parse(userIdString);
         }
     }
 }
