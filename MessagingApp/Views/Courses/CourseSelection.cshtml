@@ -17,7 +17,7 @@
         @foreach (var course in Model)
         {
             <a class="cursor-pointer text-decoration-none d-flex flex-column justify-content-center align-items-center"
-               asp-action="ClassList" asp-controller="Courses" asp-route-id="@course.Id">
+               asp-action="ClassList" asp-controller="Courses" asp-route-id="@course.CourseId">
                 <div class="course shadow-lg mb-2" style="background-color: @GetRandomColor()"></div>
                 <h3 class="text-black text-decoration-none">@course.Name</h3>
             </a>
