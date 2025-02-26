@@ -22,7 +22,7 @@ namespace MessagingApp.Data
             modelBuilder.Entity<Course>()
                 .HasOne(c => c.CourseInstructor)
                 .WithMany() // No navigation property on User for courses they instruct
-                .HasForeignKey("CourseInstructorUserId")
+                .HasForeignKey("InstructorId")
                 .OnDelete(DeleteBehavior.NoAction);
         }
     }
