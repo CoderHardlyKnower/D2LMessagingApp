@@ -8,8 +8,7 @@ namespace MessagingApp.Controllers
 {
     /// <summary>
     /// MessagingController handles the display and sending of messages
-    /// Currently, it loads all messages that have been sent and displays the selected students name
-    /// We may want to add conversation filtering between selected students
+    /// It now shows distinct conversations.  However, a proper coversation db needs to be set up
     /// </summary>
 
     public class MessagingController : Controller
@@ -34,7 +33,6 @@ namespace MessagingApp.Controllers
                 .OrderBy(m => m.Timestamp)
                 .ToList();
 
-            // Build a dictionary mapping sender IDs to names.
             // Get all distinct sender IDs from the messages.
             var senderIds = messages.Select(m => m.SenderId).Distinct().ToList();
             // Query the Users table for those sender IDs.

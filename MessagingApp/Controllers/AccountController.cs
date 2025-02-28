@@ -17,14 +17,14 @@ namespace MessagingApp.Controllers
             _context = context;
         }
 
-        // GET: /Account/Login
+        //Account/Login
         [HttpGet]
         public IActionResult Login()
         {
             return View();
         }
 
-        // POST: /Account/Login
+        //Account/Login
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(string email, string password)
@@ -55,7 +55,6 @@ namespace MessagingApp.Controllers
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
-                // Redirect to Home after successful login.
                 return RedirectToAction("Index", "Home");
             }
 
