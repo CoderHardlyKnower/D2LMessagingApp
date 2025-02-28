@@ -62,7 +62,7 @@ void SeedDatabase(AppDbContext context)
         context.Users.AddRange(new List<User>
         {
             new User("Austin Brown", "Abrown9034@conestogac.on.ca", "password1", "student"),
-            new User("Khemara Koeun", "Koeun8402@conestogac.on.ca", "password2", "student"),
+            new User("Khemara Oeun", "Koeun8402@conestogac.on.ca", "password2", "student"),
             new User("Amanda Esteves", "Aesteves3831@conestogac.on.ca", "password3", "student"),
             new User("Tristan Lagace", "Tlagace9030@conestogac.on.ca", "password4", "student")
         });
