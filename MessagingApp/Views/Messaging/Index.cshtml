@@ -23,7 +23,8 @@
                     bool isSentByUser = message.SenderId == loggedInUserId;
                     <div class="message-wrapper @(isSentByUser ? "sent" : "received")">
                         <small class="message-info">
-                            @(userNames.ContainsKey(message.SenderId) ? userNames[message.SenderId] : "Unknown") - @message.Timestamp.ToShortTimeString()
+                            @(userNames.ContainsKey(message.SenderId) ? userNames[message.SenderId] : "Unknown")
+                            - @message.Timestamp.ToShortTimeString()
                         </small>
                         <div class="message @(isSentByUser ? "sent-message" : "received-message")">
                             @message.Content
@@ -40,6 +41,7 @@
             @Html.AntiForgeryToken()
             <input type="hidden" name="studentId" value="@ViewBag.StudentId" />
             <input type="hidden" name="studentName" value="@ViewBag.StudentName" />
+            <input type="hidden" name="conversationId" value="@ViewBag.ConversationId" />
             <input type="text" name="content" placeholder="Type your message here..." required />
             <button type="submit">Send</button>
         </form>
