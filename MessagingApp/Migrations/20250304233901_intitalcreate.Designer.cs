@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MessagingApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250223185457_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250304233901_intitalcreate")]
+    partial class intitalcreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,24 +25,55 @@ namespace MessagingApp.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("MessagingApp.Models.Course", b =>
+            modelBuilder.Entity("MessagingApp.Models.Conversation", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("ConversationId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConversationId"));
 
-                    b.Property<int>("CourseInstructorUserId")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("ConversationId");
+
+                    b.ToTable("Conversations");
+                });
+
+            modelBuilder.Entity("MessagingApp.Models.ConversationParticipant", b =>
+                {
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ConversationId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ConversationParticipants");
+                });
+
+            modelBuilder.Entity("MessagingApp.Models.Course", b =>
+                {
+                    b.Property<int>("CourseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CourseId"));
+
+                    b.Property<int>("InstructorId")
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("Id");
+                    b.HasKey("CourseId");
 
-                    b.HasIndex("CourseInstructorUserId");
+                    b.HasIndex("InstructorId");
 
                     b.ToTable("Courses");
                 });
@@ -74,10 +105,21 @@ namespace MessagingApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReceiverId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
 
                     b.ToTable("Messages");
                 });
@@ -89,9 +131,6 @@ namespace MessagingApp.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
-
-                    b.Property<int?>("CourseId")
-                        .HasColumnType("int");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -110,16 +149,33 @@ namespace MessagingApp.Migrations
 
                     b.HasKey("UserId");
 
-                    b.HasIndex("CourseId");
-
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("MessagingApp.Models.ConversationParticipant", b =>
+                {
+                    b.HasOne("MessagingApp.Models.Conversation", "Conversation")
+                        .WithMany("Participants")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MessagingApp.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MessagingApp.Models.Course", b =>
                 {
                     b.HasOne("MessagingApp.Models.User", "CourseInstructor")
                         .WithMany()
-                        .HasForeignKey("CourseInstructorUserId")
+                        .HasForeignKey("InstructorId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
@@ -128,31 +184,39 @@ namespace MessagingApp.Migrations
 
             modelBuilder.Entity("MessagingApp.Models.Enrollment", b =>
                 {
-                    b.HasOne("MessagingApp.Models.Course", null)
-                        .WithMany("Enrollments")
+                    b.HasOne("MessagingApp.Models.Course", "Course")
+                        .WithMany()
                         .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MessagingApp.Models.User", null)
+                    b.HasOne("MessagingApp.Models.User", "User")
                         .WithMany("Enrollments")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MessagingApp.Models.User", b =>
+            modelBuilder.Entity("MessagingApp.Models.Message", b =>
                 {
-                    b.HasOne("MessagingApp.Models.Course", null)
-                        .WithMany("Students")
-                        .HasForeignKey("CourseId");
+                    b.HasOne("MessagingApp.Models.Conversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
                 });
 
-            modelBuilder.Entity("MessagingApp.Models.Course", b =>
+            modelBuilder.Entity("MessagingApp.Models.Conversation", b =>
                 {
-                    b.Navigation("Enrollments");
+                    b.Navigation("Messages");
 
-                    b.Navigation("Students");
+                    b.Navigation("Participants");
                 });
 
             modelBuilder.Entity("MessagingApp.Models.User", b =>

@@ -3,14 +3,16 @@ using MessagingApp.Data;
 using MessagingApp.Models;
 using System;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace MessagingApp.Controllers
 {
     /// <summary>
-    /// MessagingController handles the display and sending of messages
-    /// It now shows distinct conversations.  However, a proper coversation db needs to be set up
+    /// MessagingController handles the display and sending of messages for distinct conversations.
+    /// It now uses the Conversations table to group messages between two users.
     /// </summary>
-
     public class MessagingController : Controller
     {
         private readonly AppDbContext _context;
@@ -20,36 +22,52 @@ namespace MessagingApp.Controllers
             _context = context;
         }
 
-        // Display messaging page for the selected student
-        public IActionResult Index(int studentId, string studentName)
+        /// <summary>
+        /// Displays the messaging page for the selected student.
+        /// Retrieves the conversation between the logged-in user and the selected student
+        /// loads messages for that conversation ordered by timestamp.
+        /// </summary>
+        /// <param name="studentId">The ID of the selected student</param>
+        /// <param name="studentName">The full name of the selected student</param>
+        /// <returns>The messaging view with messages for the conversation</returns>
+        public async Task<IActionResult> Index(int studentId, string studentName)
         {
-            // Get the logged-in user's ID from claims.
+            // Get logged-in user's ID from claims.
             int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
 
-            // Retrieve messages only between the logged-in user and the selected student.
-            var messages = _context.Messages
-                .Where(m => (m.SenderId == loggedInUserId && m.ReceiverId == studentId) ||
-                            (m.SenderId == studentId && m.ReceiverId == loggedInUserId))
-                .OrderBy(m => m.Timestamp)
-                .ToList();
+            // Get or create a conversation between the logged-in user and the selected student
+            var conversation = await GetOrCreateConversationAsync(loggedInUserId, studentId);
 
-            // Get all distinct sender IDs from the messages.
+            // Retrieve messages for this conversation, ordered by timestamp.
+            var messages = await _context.Messages
+                .Where(m => m.ConversationId == conversation.ConversationId)
+                .OrderBy(m => m.Timestamp)
+                .ToListAsync();
+
+            // Build a dictionary mapping sender IDs to names for display.
             var senderIds = messages.Select(m => m.SenderId).Distinct().ToList();
-            // Query the Users table for those sender IDs.
-            var userNames = _context.Users
+            var userNames = await _context.Users
                 .Where(u => senderIds.Contains(u.UserId))
-                .ToDictionary(u => u.UserId, u => u.Name);
+                .ToDictionaryAsync(u => u.UserId, u => u.Name);
 
             ViewBag.UserNames = userNames;
             ViewBag.StudentName = studentName;
             ViewBag.StudentId = studentId;
+            ViewBag.ConversationId = conversation.ConversationId;
             return View(messages);
         }
 
-        // Add a new message and then refresh the messaging view
+        /// <summary>
+        /// Adds a new message to the current conversation and refreshes the messaging view.
+        /// </summary>
+        /// <param name="studentId">The ID of the selected student (chat partner)</param>
+        /// <param name="content">The message content</param>
+        /// <param name="studentName">The full name of the selected student</param>
+        /// <param name="conversationId">The ConversationId of the current chat</param>
+        /// <returns>Redirects to the messaging view for the conversation</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult AddMessage(int studentId, string content, string studentName)
+        public async Task<IActionResult> AddMessage(int studentId, string content, string studentName, int conversationId)
         {
             if (!string.IsNullOrEmpty(content))
             {
@@ -59,13 +77,46 @@ namespace MessagingApp.Controllers
                     Content = content,
                     Timestamp = DateTime.Now,
                     SenderId = loggedInUserId,
-                    ReceiverId = studentId
+                    ReceiverId = studentId,
+                    ConversationId = conversationId
                 };
                 _context.Messages.Add(message);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
             return RedirectToAction("Index", new { studentId, studentName });
         }
+
+        /// <summary>
+        /// Retrieves an existing conversation between two users or creates a new one if none exists.
+        /// This method ensures that each one-to-one chat has a unique ConversationId.
+        /// </summary>
+        /// <param name="userA">The logged-in user's ID</param>
+        /// <param name="userB">The selected student's user ID</param>
+        /// <returns>A Conversation object representing the private chat</returns>
+        private async Task<Conversation> GetOrCreateConversationAsync(int userA, int userB)
+        {
+            // Look for an existing conversation that has exactly these two participants.
+            var conversation = await _context.Conversations
+                .Include(c => c.Participants)
+                .FirstOrDefaultAsync(c =>
+                    c.Participants.Count == 2 &&
+                    c.Participants.Any(p => p.UserId == userA) &&
+                    c.Participants.Any(p => p.UserId == userB));
+
+            if (conversation == null)
+            {
+                // Create a new conversation and save to generate a ConversationId.
+                conversation = new Conversation();
+                _context.Conversations.Add(conversation);
+                await _context.SaveChangesAsync();
+
+                // Add both users as participants.
+                var participantA = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userA };
+                var participantB = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userB };
+                _context.ConversationParticipants.AddRange(participantA, participantB);
+                await _context.SaveChangesAsync();
+            }
+            return conversation;
+        }
     }
-    
 }
