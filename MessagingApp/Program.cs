@@ -5,10 +5,13 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using MessagingApp.Models;
 using MessagingApp.Controllers;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR();
+
 
 // Configure SQL Server 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -17,7 +20,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        options.LoginPath = "/Account/Login";   // Redirect to login if not authenticated
+        options.LoginPath = "/Account/Login";   
         options.LogoutPath = "/Account/Logout";
     });
 
@@ -50,6 +53,8 @@ using (var scope = app.Services.CreateScope())
 
     SeedDatabase(context);
 }
+
+app.MapHub<MessagingApp.Hubs.ChatHub>("/chatHub");
 
 app.Run();
 

@@ -3,6 +3,9 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
     var userNames = ViewBag.UserNames as Dictionary<int, string>;
     int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
+    string loggedInUserName = User.Identity.Name;
+    string studentName = ViewBag.StudentName as string;
+    int conversationId = (int)ViewBag.ConversationId;
 }
 
 <!DOCTYPE html>
@@ -11,10 +14,11 @@
     <meta charset="utf-8" />
     <title>Messaging - MessagingApp</title>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
 </head>
 <body>
     <div class="message-container">
-        <h1>Messaging with @ViewBag.StudentName</h1>
+        <h1>Messaging with @studentName</h1>
         <div class="message-list" id="messageList">
             @if (Model != null && Model.Any())
             {
@@ -37,19 +41,66 @@
                 <p>No messages available.</p>
             }
         </div>
-        <form class="add-message-form" method="post" asp-action="AddMessage" asp-controller="Messaging">
+        <form class="add-message-form" id="messageForm" method="post" asp-action="AddMessage" asp-controller="Messaging">
             @Html.AntiForgeryToken()
             <input type="hidden" name="studentId" value="@ViewBag.StudentId" />
-            <input type="hidden" name="studentName" value="@ViewBag.StudentName" />
-            <input type="hidden" name="conversationId" value="@ViewBag.ConversationId" />
-            <input type="text" name="content" placeholder="Type your message here..." required />
+            <input type="hidden" name="studentName" value="@studentName" />
+            <input type="hidden" name="conversationId" value="@conversationId" />
+            <input type="text" name="content" id="contentInput" placeholder="Type your message here..." required />
             <button type="submit">Send</button>
         </form>
     </div>
     <script>
+        // Auto-scroll to the bottom on page load
         document.addEventListener("DOMContentLoaded", function () {
             var messageList = document.getElementById("messageList");
             messageList.scrollTop = messageList.scrollHeight;
+        });
+
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .build();
+
+        connection.start().then(() => {
+            console.log("Connected to SignalR hub.");
+        }).catch(err => console.error("SignalR Connection Error: ", err.toString()));
+
+        // Handle receiving a message from the SignalR hub
+        connection.on("ReceiveMessage", (senderId, senderName, message, timestamp) => {
+            const messageList = document.getElementById("messageList");
+            const isSentByUser = senderId == @loggedInUserId;
+            const wrapper = document.createElement("div");
+            wrapper.className = "message-wrapper " + (isSentByUser ? "sent" : "received");
+
+            const infoEl = document.createElement("small");
+            infoEl.className = "message-info";
+            infoEl.innerText = senderName + " - " + timestamp;
+
+            const messageEl = document.createElement("div");
+            messageEl.className = "message " + (isSentByUser ? "sent-message" : "received-message");
+            messageEl.innerText = message;
+
+            wrapper.appendChild(infoEl);
+            wrapper.appendChild(messageEl);
+            messageList.appendChild(wrapper);
+
+            // Auto-scroll to show the latest message
+            messageList.scrollTop = messageList.scrollHeight;
+        });
+
+        // Intercept the form submission to use SignalR instead of a full post
+        document.getElementById("messageForm").addEventListener("submit", function (event) {
+            event.preventDefault(); 
+
+            const contentInput = document.getElementById("contentInput");
+            if (contentInput.value.trim() === "") {
+                return; 
+            }
+            // Convert conversationId to an integer
+            const convId = parseInt(document.querySelector('input[name="conversationId"]').value, 10);
+            connection.invoke("SendMessage", @loggedInUserId, "@loggedInUserName", contentInput.value, convId)
+                .catch(err => console.error(err.toString()));
+            contentInput.value = ""; // Clear the input after sending
         });
     </script>
 </body>
