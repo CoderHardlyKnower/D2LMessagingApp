@@ -20,7 +20,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        options.LoginPath = "/Account/Login";   // Redirect to login if not authenticated
+        options.LoginPath = "/Account/Login";   
         options.LogoutPath = "/Account/Logout";
     });
 

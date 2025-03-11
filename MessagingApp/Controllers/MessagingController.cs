@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MessagingApp.Controllers
 {
@@ -13,6 +14,7 @@ namespace MessagingApp.Controllers
     /// MessagingController handles the display and sending of messages for distinct conversations.
     /// It now uses the Conversations table to group messages between two users.
     /// </summary>
+    [Authorize]
     public class MessagingController : Controller
     {
         private readonly AppDbContext _context;
