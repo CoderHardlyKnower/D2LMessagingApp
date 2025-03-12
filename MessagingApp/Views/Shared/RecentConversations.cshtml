@@ -1,0 +1,158 @@
+﻿@* Style *@
+<style>
+    .chat-widget {
+        position: fixed;
+        bottom: 30px; 
+        right: 30px; 
+        width: 60px;
+        height: 60px;
+        background-color: #d3d3d3; 
+        border-radius: 50%; 
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        cursor: pointer; 
+        transition: background-color 0.3s ease;
+    }
+
+    .chat-widget:hover {
+        background-color: #a9a9a9;
+    }
+
+    .chat-img {
+        object-fit: contain;
+        width: 30px; 
+        height: 30px; 
+    }
+
+    .chat-window {
+        display: none;
+        width: 400px;
+        height: 400px;
+        background-color: white;
+        position: absolute;
+        bottom: 40px;
+        right: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-radius: 15px;
+    }
+
+    .chat-window-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px;
+        height: fit-content;
+    }
+
+    .icons {
+        display: flex;
+        align-items: center;
+    }
+
+    .icons > * {
+        cursor: pointer;
+    }
+
+    .active-chats {
+        background-color: #a9a9a9;
+    }
+
+    .conversation {
+        background-color: white;
+        cursor: pointer;
+    }
+
+    .conversation:hover {
+            background-color: #d3d3d3;
+    }
+
+    .fit-content {
+        width: fit-content;
+    }
+</style>
+
+@* Chat widget *@
+<div class="chat-widget" onclick="getRecentConversations()">
+    <img src="~/images/chat.png" class="chat-img" />
+</div>
+
+@* Chat window *@
+<div class="chat-window">
+    <div class="chat-window-header flex">
+        <h4>Recent Conversations</h4>
+        <div class="icons">
+            <i class="bi bi-arrows-fullscreen fs-4"></i>
+            <i class="bi bi-x fs-1 mx-lg-1" onclick="hideChatWindow()"></i>
+        </div>
+    </div>
+
+    <div class="active-chats">
+    </div>
+</div>
+
+<script>
+    //Hide chat window when close button is clicked
+    function hideChatWindow() {
+        const chatWindow = document.querySelector(".chat-window");
+        const chatWidget = document.querySelector(".chat-widget");
+
+        chatWindow.style.display = "none";
+        chatWidget.style.display = "flex";
+    }
+
+    //Hide chat-widget, fetch recent conversations
+    async function getRecentConversations() {
+        const chatWindow = document.querySelector(".chat-window");
+        const activeChatsDiv = document.querySelector(".active-chats");
+        const chatWidget = document.querySelector(".chat-widget");
+
+        chatWidget.style.display = "none";
+        chatWindow.style.display = "block";
+        activeChatsDiv.innerHTML = "";
+
+        var recentConversations = await fetchRecentConversations();
+        console.log(recentConversations);
+        if (recentConversations.length != 0) {
+            recentConversations.forEach(conversation => {
+                const timestamp = conversation.lastMessageTimestamp;
+                const date = new Date(timestamp);
+                const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+                var content = `
+                    <div class="conversation" onclick=getConversation()>
+                            <div class="d-flex justify-content-between align-items-center">
+                            <h4>${conversation.messageSender}</h4>
+                            <span>${time}</span>
+                        </div>
+                        <p>${conversation.lastMessage}</p>
+                    </div>
+                `;
+
+                activeChatsDiv.innerHTML += content;
+            })
+        }
+
+    }
+
+    async function fetchRecentConversations() {
+        try {
+            const response = await fetch('/Chat/GetRecentConversations'); 
+            if (!response.ok) {
+                throw new Error('Couldnt get recent conversations');
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    //Get clicked conversation
+    async function getConversation() {
+
+    }
+</script>
