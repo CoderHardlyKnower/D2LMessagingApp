@@ -34,7 +34,6 @@
         position: absolute;
         bottom: 40px;
         right: 15px;
-        padding: 20px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         border-radius: 15px;
     }
@@ -43,8 +42,8 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 5px;
         height: fit-content;
+        padding: 5px 15px;
     }
 
     .icons {
@@ -56,21 +55,22 @@
         cursor: pointer;
     }
 
-    .active-chats {
-        background-color: #a9a9a9;
-    }
-
     .conversation {
         background-color: white;
         cursor: pointer;
+        padding: 10px;
+        border-top: 1px solid black;
+        border-bottom: 1px solid black;
     }
 
     .conversation:hover {
             background-color: #d3d3d3;
+            color: black;
     }
 
-    .fit-content {
-        width: fit-content;
+    a {
+        text-decoration: none;
+        color: black;
     }
 </style>
 
@@ -84,7 +84,6 @@
     <div class="chat-window-header flex">
         <h4>Recent Conversations</h4>
         <div class="icons">
-            <i class="bi bi-arrows-fullscreen fs-4"></i>
             <i class="bi bi-x fs-1 mx-lg-1" onclick="hideChatWindow()"></i>
         </div>
     </div>
@@ -114,7 +113,6 @@
         activeChatsDiv.innerHTML = "";
 
         var recentConversations = await fetchRecentConversations();
-        console.log(recentConversations);
         if (recentConversations.length != 0) {
             recentConversations.forEach(conversation => {
                 const timestamp = conversation.lastMessageTimestamp;
@@ -122,13 +120,15 @@
                 const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
                 var content = `
-                    <div class="conversation" onclick=getConversation()>
+                          <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${conversation.student.name}">
+                        <div class="conversation">
                             <div class="d-flex justify-content-between align-items-center">
-                            <h4>${conversation.messageSender}</h4>
+                            <h4>${conversation.student.name}</h4>
                             <span>${time}</span>
                         </div>
                         <p>${conversation.lastMessage}</p>
-                    </div>
+                      </div>
+                    </a>
                 `;
 
                 activeChatsDiv.innerHTML += content;
@@ -139,7 +139,7 @@
 
     async function fetchRecentConversations() {
         try {
-            const response = await fetch('/Chat/GetRecentConversations'); 
+            const response = await fetch('/Messaging/GetRecentConversations'); 
             if (!response.ok) {
                 throw new Error('Couldnt get recent conversations');
             }
@@ -149,10 +149,5 @@
         } catch (error) {
             throw error;
         }
-    }
-
-    //Get clicked conversation
-    async function getConversation() {
-
     }
 </script>
