@@ -80,8 +80,8 @@ h1 {
 .message-list {
     flex-grow: 1;
     overflow-y: auto;
-    max-height: 300px; /* Prevents footer overlap */
-    min-height: 100px; /* Prevents shrinking too much */
+    max-height: 300px; 
+    min-height: 100px; 
     padding: 10px;
     background-color: #f9f9f9;
     border-radius: 10px;

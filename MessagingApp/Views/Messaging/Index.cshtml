@@ -167,7 +167,7 @@
             if (target.classList.contains("edit-icon")) {
                 const messageDiv = wrapper.querySelector(".message");
                 const originalText = messageDiv.innerText;
-                if (messageDiv.querySelector("input")) return; // Already editing
+                if (messageDiv.querySelector("input")) return; 
 
                 // Create input for editing
                 const input = document.createElement("input");
@@ -189,11 +189,9 @@
                         return;
                     }
                     editSaved = true;
-                    // Remove blur listener so it doesn't cancel after save
                     input.removeEventListener("blur", onBlur);
                     connection.invoke("EditMessage", messageId, newContent)
                         .catch(err => console.error(err.toString()));
-                    // Wait for MessageEdited event to update the UI
                 }
 
                 function cancelEdit() {
@@ -208,7 +206,7 @@
                     }, 300);
                 }
 
-                // Keydown: Enter saves, Escape cancels
+                // Keydown, Enter savs, Escape cancels
                 input.addEventListener("keydown", function (e) {
                     if (e.key === "Enter") {
                         e.preventDefault();

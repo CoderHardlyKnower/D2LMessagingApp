@@ -41,7 +41,7 @@ namespace MessagingApp.Hubs
             if (message != null)
             {
                 message.Content = newContent;
-                message.Timestamp = DateTime.Now; // update timestamp
+                message.Timestamp = DateTime.Now; 
                 await _context.SaveChangesAsync();
 
                 await Clients.All.SendAsync("MessageEdited", messageId, newContent, message.Timestamp.ToShortTimeString());
