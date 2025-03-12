@@ -80,21 +80,58 @@ h1 {
 .message-list {
     flex-grow: 1;
     overflow-y: auto;
-    max-height: 300px; /* Prevents footer overlap */
-    min-height: 100px; /* Prevents shrinking too much */
+    max-height: 300px; 
+    min-height: 100px; 
     padding: 10px;
     background-color: #f9f9f9;
     border-radius: 10px;
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
+    scroll-behavior: smooth;
 }
 
 .message-wrapper {
     display: flex;
     flex-direction: column;
     margin-bottom: 5px;
+    position: relative;
 }
+.message-actions {
+    display: none;
+    position: absolute;
+    top: -24px;
+    right: 0;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.message-wrapper:hover .message-actions {
+    display: block;
+}
+.message-actions i {
+    color: #fff;
+    cursor: pointer;
+    margin-left: 5px;
+}
+/* Edited label for messages that have been modified */
+.edited-label {
+    font-style: italic;
+    font-size: 0.8em;
+    color: #888;
+    margin-left: 5px;
+}
+/* Deleted message styling */
+.deleted-message {
+    font-style: italic;
+    font-size: 0.9em;
+    color: #888;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 15px;
+    background-color: #f0f0f0;
+}
+
 
 /* Sender Name & Timestamp */
 .message-info {

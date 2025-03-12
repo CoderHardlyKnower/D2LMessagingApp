@@ -21,7 +21,7 @@ namespace MessagingApp.Hubs
             var newMessage = new Message
             {
                 SenderId = senderId,
-                ReceiverId = 0, 
+                ReceiverId = 0,
                 Content = message,
                 Timestamp = DateTime.Now,
                 ConversationId = conversationId
@@ -30,8 +30,35 @@ namespace MessagingApp.Hubs
             _context.Messages.Add(newMessage);
             await _context.SaveChangesAsync();
 
-            
-            await Clients.All.SendAsync("ReceiveMessage", senderId, senderName, message, newMessage.Timestamp.ToShortTimeString());
+            // Send the newMessage.Id along with other data so the client can attach it
+            await Clients.All.SendAsync("ReceiveMessage", senderId, senderName, message, newMessage.Timestamp.ToShortTimeString(), newMessage.Id);
+        }
+
+        // Edit a message
+        public async Task EditMessage(int messageId, string newContent)
+        {
+            var message = await _context.Messages.FindAsync(messageId);
+            if (message != null)
+            {
+                message.Content = newContent;
+                message.Timestamp = DateTime.Now; 
+                await _context.SaveChangesAsync();
+
+                await Clients.All.SendAsync("MessageEdited", messageId, newContent, message.Timestamp.ToShortTimeString());
+            }
+        }
+
+        // Delete a message
+        public async Task DeleteMessage(int messageId)
+        {
+            var message = await _context.Messages.FindAsync(messageId);
+            if (message != null)
+            {
+                _context.Messages.Remove(message);
+                await _context.SaveChangesAsync();
+
+                await Clients.All.SendAsync("MessageDeleted", messageId);
+            }
         }
     }
 }
