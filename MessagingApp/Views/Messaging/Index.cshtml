@@ -18,18 +18,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        /* Deleted message styling */
-        .deleted-message {
-            font-style: italic;
-            font-size: 0.9em;
-            color: #888;
-            text-align: center;
-            padding: 8px 12px;
-            border-radius: 15px;
-            background-color: #f0f0f0;
-        }
-    </style>
 </head>
 <body>
     <div class="message-container">
@@ -75,15 +63,26 @@
         </form>
     </div>
 
+    <!-- Modal Confirmation for deletion -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-content">
+            <h2>Confirm Deletion</h2>
+            <p>Are you sure you want to delete this message?</p>
+            <button class="btn-confirm" id="confirmDeleteBtn">Yes, Delete</button>
+            <button class="btn-cancel" id="cancelDeleteBtn">Cancel</button>
+        </div>
+    </div>
+
     <script>
-        // Auto-scroll to the bottom on page load after a short delay
+        //Global variable to store the message ID pending deletion
+        let pendingDeleteMessageId = null;
+
         window.onload = function () {
             var messageList = document.getElementById("messageList");
             messageList.scrollTop = messageList.scrollHeight;
         };
 
-
-        // Initialize SignalR connection
+        // Initialize SignalR connection.
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/chatHub")
             .build();
@@ -92,41 +91,39 @@
             console.log("Connected to SignalR hub.");
         }).catch(err => console.error("SignalR Connection Error: ", err.toString()));
 
-        // Handle receiving a new message from the hub (with messageId)
+        // Handle receiving a new message.
         connection.on("ReceiveMessage", (senderId, senderName, message, timestamp, messageId) => {
             const messageList = document.getElementById("messageList");
+            const noMsg = messageList.querySelector("p");
+            if (noMsg && noMsg.innerText.trim() === "No messages available.") {
+                noMsg.remove();
+            }
+
             const isSentByUser = senderId == @loggedInUserId;
             const wrapper = document.createElement("div");
             wrapper.className = "message-wrapper " + (isSentByUser ? "sent" : "received");
             wrapper.setAttribute("data-message-id", messageId);
 
-            const headerDiv = document.createElement("div");
-            headerDiv.className = "message-header";
-            const infoEl = document.createElement("small");
-            infoEl.className = "message-info";
-            infoEl.innerText = senderName + " - " + timestamp;
-            headerDiv.appendChild(infoEl);
+            let headerHtml = `<div class="message-header">
+                                        <small class="message-info">${senderName} - ${timestamp}</small>`;
             if (isSentByUser) {
-                const actionsDiv = document.createElement("div");
-                actionsDiv.className = "message-actions";
-                actionsDiv.innerHTML = '<i class="fas fa-edit edit-icon" title="Edit"></i><i class="fas fa-trash delete-icon" title="Delete"></i>';
-                headerDiv.appendChild(actionsDiv);
+                headerHtml += `<div class="message-actions">
+                                        <i class="fas fa-edit edit-icon" title="Edit"></i>
+                                        <i class="fas fa-trash delete-icon" title="Delete"></i>
+                                       </div>`;
             }
-            wrapper.appendChild(headerDiv);
-
-            const messageEl = document.createElement("div");
-            messageEl.className = "message " + (isSentByUser ? "sent-message" : "received-message");
-            messageEl.innerText = message;
-            wrapper.appendChild(messageEl);
+            headerHtml += `</div>`;
+            wrapper.innerHTML = headerHtml +
+                `<div class="message ${isSentByUser ? "sent-message" : "received-message"}">${message}</div>`;
 
             messageList.appendChild(wrapper);
             messageList.scrollTop = messageList.scrollHeight;
         });
 
-        // Intercept form submission to send message via SignalR
+        // Intercept form submission to send message via SignalR.
         document.getElementById("messageForm").addEventListener("submit", function (event) {
             event.preventDefault();
-            cancelActiveEdits(); // Cancel any active edit before sending a new message
+            cancelActiveEdits();
             const contentInput = document.getElementById("contentInput");
             if (contentInput.value.trim() === "") return;
             const convId = parseInt(document.querySelector('input[name="conversationId"]').value, 10);
@@ -135,7 +132,7 @@
             contentInput.value = "";
         });
 
-        // Helper function to cancel active edit inputs
+        // Helper: Cancel any active edit inputs.
         function cancelActiveEdits() {
             const activeInputs = document.querySelectorAll(".message-wrapper input[type='text']");
             activeInputs.forEach(input => {
@@ -148,40 +145,34 @@
             });
         }
 
-        // Delegate events for edit and delete actions
+        // Delegate events for edit and delete actions.
         document.getElementById("messageList").addEventListener("click", function (event) {
             const target = event.target;
             const wrapper = target.closest(".message-wrapper");
             if (!wrapper) return;
             const messageId = parseInt(wrapper.getAttribute("data-message-id"), 10);
 
-            // Delete action
+            // Delete action: open the custom modal confirmation.
             if (target.classList.contains("delete-icon")) {
-                if (confirm("Are you sure you want to delete this message?")) {
-                    connection.invoke("DeleteMessage", messageId)
-                        .catch(err => console.error(err.toString()));
-                }
+                pendingDeleteMessageId = messageId;
+                document.getElementById("confirmModal").style.display = "flex";
             }
 
-            // Edit action
+            // Edit action.
             if (target.classList.contains("edit-icon")) {
                 const messageDiv = wrapper.querySelector(".message");
                 const originalText = messageDiv.innerText;
-                if (messageDiv.querySelector("input")) return; 
-
-                // Create input for editing
+                if (messageDiv.querySelector("input")) return;
                 const input = document.createElement("input");
                 input.type = "text";
                 input.value = originalText;
                 input.style.width = "80%";
-                // Store original text
                 messageDiv.dataset.originalText = originalText;
                 messageDiv.innerHTML = "";
                 messageDiv.appendChild(input);
                 input.focus();
 
-                let editSaved = false; // Flag to prevent blur from canceling after save
-
+                let editSaved = false;
                 function saveEdit() {
                     const newContent = input.value.trim();
                     if (newContent === "" || newContent === originalText) {
@@ -193,20 +184,14 @@
                     connection.invoke("EditMessage", messageId, newContent)
                         .catch(err => console.error(err.toString()));
                 }
-
                 function cancelEdit() {
                     messageDiv.innerText = originalText;
                 }
-
                 function onBlur() {
-                    setTimeout(function () {
-                        if (!editSaved) {
-                            cancelEdit();
-                        }
+                    setTimeout(() => {
+                        if (!editSaved) cancelEdit();
                     }, 300);
                 }
-
-                // Keydown, Enter savs, Escape cancels
                 input.addEventListener("keydown", function (e) {
                     if (e.key === "Enter") {
                         e.preventDefault();
@@ -217,11 +202,7 @@
                         cancelEdit();
                     }
                 });
-
-                // Attach blur handler
                 input.addEventListener("blur", onBlur);
-
-                // Create save and cancel icons
                 const saveIcon = document.createElement("i");
                 saveIcon.className = "fas fa-check";
                 saveIcon.style.cursor = "pointer";
@@ -232,13 +213,26 @@
                 cancelIcon.title = "Cancel";
                 messageDiv.appendChild(saveIcon);
                 messageDiv.appendChild(cancelIcon);
-
                 saveIcon.addEventListener("click", saveEdit);
                 cancelIcon.addEventListener("click", cancelEdit);
             }
         });
 
-        // Handle MessageEdited event from the hub to update the UI
+        // Modal buttons.
+        document.getElementById("confirmDeleteBtn").addEventListener("click", function () {
+            if (pendingDeleteMessageId != null) {
+                connection.invoke("DeleteMessage", pendingDeleteMessageId)
+                    .catch(err => console.error(err.toString()));
+                document.getElementById("confirmModal").style.display = "none";
+                pendingDeleteMessageId = null;
+            }
+        });
+        document.getElementById("cancelDeleteBtn").addEventListener("click", function () {
+            document.getElementById("confirmModal").style.display = "none";
+            pendingDeleteMessageId = null;
+        });
+
+        // Handle MessageEdited event.
         connection.on("MessageEdited", (messageId, newContent, timestamp) => {
             const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
             if (wrapper) {
@@ -249,7 +243,7 @@
             }
         });
 
-        // Handle MessageDeleted event from the hub to update the UI
+        // Handle MessageDeleted event.
         connection.on("MessageDeleted", (messageId) => {
             const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
             if (wrapper) {
@@ -258,7 +252,7 @@
                 if (infoEl && infoEl.innerText.indexOf(" - ") !== -1) {
                     senderName = infoEl.innerText.split(" - ")[0];
                 }
-                wrapper.innerHTML = `<div class="deleted-message">[${senderName}] deleted a message</div>`;
+                wrapper.innerHTML = `<div class="deleted-message">${senderName} deleted a message</div>`;
             }
         });
     </script>
