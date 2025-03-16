@@ -5,6 +5,8 @@
         public int Id { get; set; } // Primary key
         public string Content { get; set; } // Message content
         public DateTime Timestamp { get; set; } = DateTime.Now; // Default timestamp
+        public bool IsEdited { get; set; } = false; // Indicates if message was edited
+
 
         // Link to the conversation.
         public int ConversationId { get; set; }

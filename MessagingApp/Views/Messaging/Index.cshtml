@@ -8,6 +8,12 @@
     int conversationId = (int)ViewBag.ConversationId;
 }
 
+<!--
+    Thisis the Messaging view for displaying and sending messages
+    This view renders the messaging interface and handles client-side operations such as
+    sending, editing, and deleting messages via SignalR.
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,6 +39,7 @@
                             <small class="message-info">
                                 @(userNames.ContainsKey(message.SenderId) ? userNames[message.SenderId] : "Unknown")
                                 - @message.Timestamp.ToShortTimeString()
+                                @Html.Raw(message.IsEdited ? " <span class=\"edited-label\">(edited)</span>" : "")
                             </small>
                             @if (isSentByUser)
                             {
@@ -53,6 +60,7 @@
                 <p>No messages available.</p>
             }
         </div>
+
         <form class="add-message-form" id="messageForm" method="post" asp-action="AddMessage" asp-controller="Messaging">
             @Html.AntiForgeryToken()
             <input type="hidden" name="studentId" value="@ViewBag.StudentId" />
@@ -94,7 +102,10 @@
                 .catch(err => console.error(err.toString()));
         }).catch(err => console.error("SignalR Connection Error: ", err.toString()));
 
-        // Handle receiving a new message.
+        /// <summary>
+        /// Handles receiving new message
+        /// Appends the message to the message list
+        /// </summary>
         connection.on("ReceiveMessage", (senderId, senderName, message, timestamp, messageId) => {
             const messageList = document.getElementById("messageList");
             const noMsg = messageList.querySelector("p");
@@ -123,7 +134,10 @@
             messageList.scrollTop = messageList.scrollHeight;
         });
 
-        // Intercept form submission to send message via SignalR.
+        /// <summary>
+        /// Intercepts the message form submission to send a new message via SignalR
+        /// Prevents the default form behavior, sends the message, and clears the input field
+        /// </summary>
         document.getElementById("messageForm").addEventListener("submit", function (event) {
             event.preventDefault();
             cancelActiveEdits();
@@ -147,8 +161,10 @@
                 }
             });
         }
-
-        // Delegate events for edit and delete actions.
+        /// <summary>
+        /// Delegates the click events on the message list for editing or deleting messages
+        /// Opens the deletion confirmation modal or transforms the message into an inline editor.
+        /// </summary>
         document.getElementById("messageList").addEventListener("click", function (event) {
             const target = event.target;
             const wrapper = target.closest(".message-wrapper");
@@ -221,7 +237,10 @@
             }
         });
 
-        // Modal buttons.
+        /// <summary>
+        /// Handles the confirmation of message deletion
+        /// Invokes the DeleteMessage method on the SignalR hub and hides the modal
+        /// </summary>
         document.getElementById("confirmDeleteBtn").addEventListener("click", function () {
             if (pendingDeleteMessageId != null) {
                 connection.invoke("DeleteMessage", pendingDeleteMessageId)
@@ -236,15 +255,23 @@
         });
 
         // Handle MessageEdited event.
+        // Handle MessageEdited event to update the UI (edited marker persists)
         connection.on("MessageEdited", (messageId, newContent, timestamp) => {
             const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
             if (wrapper) {
+                // Update the message content
                 const messageDiv = wrapper.querySelector(".message");
                 messageDiv.innerText = newContent;
+                // Update the header info: extract the sender name from existing info
                 const infoEl = wrapper.querySelector(".message-info");
-                infoEl.innerHTML = infoEl.innerHTML.split("-")[0] + "- " + timestamp + ' <span class="edited-label">(edited)</span>';
+                // We assume the infoEl text is in the format "SenderName - oldTimestamp"
+                let parts = infoEl.innerText.split("-");
+                let senderName = parts[0].trim();
+                // Replace header with new timestamp and the persistent (edited) marker
+                infoEl.innerHTML = `${senderName} - ${timestamp} <span class="edited-label">(edited)</span>`;
             }
         });
+
 
         // Handle MessageDeleted event.
         connection.on("MessageDeleted", (messageId) => {

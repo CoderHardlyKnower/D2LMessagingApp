@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 
 namespace MessagingApp.Hubs
 {
+    /// <summary>
+    /// SignalR hub for handling real-time messaging operations.
+    /// Provides methods for sending, editing, deleting messages, and managing conversation groups.
+    /// </summary>
     public class ChatHub : Hub
     {
         private readonly AppDbContext _context;
@@ -54,12 +58,14 @@ namespace MessagingApp.Hubs
             if (message != null)
             {
                 message.Content = newContent;
-                message.Timestamp = DateTime.Now; 
+                message.Timestamp = DateTime.Now;
+                message.IsEdited = true; // Mark the message as edited
                 await _context.SaveChangesAsync();
 
                 await Clients.All.SendAsync("MessageEdited", messageId, newContent, message.Timestamp.ToShortTimeString());
             }
         }
+
 
         // Delete a message
         public async Task DeleteMessage(int messageId)
