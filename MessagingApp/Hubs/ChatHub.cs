@@ -31,8 +31,21 @@ namespace MessagingApp.Hubs
             await _context.SaveChangesAsync();
 
             // Send the newMessage.Id along with other data so the client can attach it
-            await Clients.All.SendAsync("ReceiveMessage", senderId, senderName, message, newMessage.Timestamp.ToShortTimeString(), newMessage.Id);
+            await Clients.Group("conversation_" + conversationId)
+                .SendAsync("ReceiveMessage", senderId, senderName, message, newMessage.Timestamp.ToShortTimeString(), newMessage.Id);
         }
+
+        public async Task JoinConversation(int conversationId)
+        {
+            //Clents in a conversation will be added to a group named "conversation_{conversationId}"
+            await Groups.AddToGroupAsync(Context.ConnectionId, "conversation_" + conversationId);
+        }
+
+        public async Task LeaveConversation(int conversationId)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, "conversation_" + conversationId);
+        }
+
 
         // Edit a message
         public async Task EditMessage(int messageId, string newContent)

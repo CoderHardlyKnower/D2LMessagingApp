@@ -89,6 +89,9 @@
 
         connection.start().then(() => {
             console.log("Connected to SignalR hub.");
+            // Join the conversation group (using the conversationId from  the page
+            connection.invoke("JoinConversation", @conversationId)
+                .catch(err => console.error(err.toString()));
         }).catch(err => console.error("SignalR Connection Error: ", err.toString()));
 
         // Handle receiving a new message.
