@@ -6,6 +6,8 @@
         public string Content { get; set; } // Message content
         public DateTime Timestamp { get; set; } = DateTime.Now; // Default timestamp
         public bool IsEdited { get; set; } = false; // Indicates if message was edited
+        public DateTime CreatedTimestamp { get; set; } = DateTime.Now;
+
 
 
         // Link to the conversation.

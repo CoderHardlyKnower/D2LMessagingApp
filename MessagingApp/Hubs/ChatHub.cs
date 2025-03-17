@@ -21,12 +21,13 @@ namespace MessagingApp.Hubs
 
         public async Task SendMessage(int senderId, string senderName, string message, int conversationId)
         {
-            // Save the message to the database
+            // Save the message to the database with both timestamps.
             var newMessage = new Message
             {
                 SenderId = senderId,
                 ReceiverId = 0,
                 Content = message,
+                CreatedTimestamp = DateTime.Now,
                 Timestamp = DateTime.Now,
                 ConversationId = conversationId
             };
@@ -34,7 +35,7 @@ namespace MessagingApp.Hubs
             _context.Messages.Add(newMessage);
             await _context.SaveChangesAsync();
 
-            // Send the newMessage.Id along with other data so the client can attach it
+            // Broadcast the new message to the conversation group.
             await Clients.Group("conversation_" + conversationId)
                 .SendAsync("ReceiveMessage", senderId, senderName, message, newMessage.Timestamp.ToShortTimeString(), newMessage.Id);
         }
@@ -58,13 +59,15 @@ namespace MessagingApp.Hubs
             if (message != null)
             {
                 message.Content = newContent;
-                message.Timestamp = DateTime.Now;
-                message.IsEdited = true; // Mark the message as edited
+                message.Timestamp = DateTime.Now; // Update the display timestamp.
+                message.IsEdited = true;          // Mark as edited.
                 await _context.SaveChangesAsync();
 
+                // Broadcast the updated message details.
                 await Clients.All.SendAsync("MessageEdited", messageId, newContent, message.Timestamp.ToShortTimeString());
             }
         }
+
 
 
         // Delete a message

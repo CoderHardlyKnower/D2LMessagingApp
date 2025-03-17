@@ -31,7 +31,7 @@
         <div class="message-list" id="messageList">
             @if (Model != null && Model.Any())
             {
-                foreach (var message in Model)
+                foreach (var message in Model.Reverse())
                 {
                     bool isSentByUser = message.SenderId == loggedInUserId;
                     <div class="message-wrapper @(isSentByUser ? "sent" : "received")" data-message-id="@message.Id">
@@ -87,7 +87,7 @@
 
         window.onload = function () {
             var messageList = document.getElementById("messageList");
-            messageList.scrollTop = messageList.scrollHeight;
+            messageList.scrollTop = 0;
         };
 
         // Initialize SignalR connection.
@@ -119,20 +119,21 @@
             wrapper.setAttribute("data-message-id", messageId);
 
             let headerHtml = `<div class="message-header">
-                                        <small class="message-info">${senderName} - ${timestamp}</small>`;
+                                    <small class="message-info">${senderName} - ${timestamp}</small>`;
             if (isSentByUser) {
                 headerHtml += `<div class="message-actions">
-                                        <i class="fas fa-edit edit-icon" title="Edit"></i>
-                                        <i class="fas fa-trash delete-icon" title="Delete"></i>
-                                       </div>`;
+                                    <i class="fas fa-edit edit-icon" title="Edit"></i>
+                                    <i class="fas fa-trash delete-icon" title="Delete"></i>
+                                </div>`;
             }
             headerHtml += `</div>`;
             wrapper.innerHTML = headerHtml +
                 `<div class="message ${isSentByUser ? "sent-message" : "received-message"}">${message}</div>`;
 
-            messageList.appendChild(wrapper);
-            messageList.scrollTop = messageList.scrollHeight;
+            // Instead of appending, insert the new message at the beginning of the container.
+            messageList.insertBefore(wrapper, messageList.firstChild);
         });
+
 
         /// <summary>
         /// Intercepts the message form submission to send a new message via SignalR
@@ -272,7 +273,6 @@
             }
         });
 
-
         // Handle MessageDeleted event.
         connection.on("MessageDeleted", (messageId) => {
             const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
@@ -285,6 +285,7 @@
                 wrapper.innerHTML = `<div class="deleted-message">${senderName} deleted a message</div>`;
             }
         });
+
     </script>
 </body>
 </html>
