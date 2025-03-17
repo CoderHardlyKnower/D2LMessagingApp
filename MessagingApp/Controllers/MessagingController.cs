@@ -43,7 +43,7 @@ namespace MessagingApp.Controllers
             // Retrieve messages for this conversation, ordered by timestamp.
             var messages = await _context.Messages
                 .Where(m => m.ConversationId == conversation.ConversationId)
-                .OrderBy(m => m.Timestamp)
+                .OrderBy(m => m.CreatedTimestamp) // Order by the original send time.
                 .ToListAsync();
 
             // Build a dictionary mapping sender IDs to names for display.

@@ -4,7 +4,11 @@
     {
         public int Id { get; set; } // Primary key
         public string Content { get; set; } // Message content
-        public DateTime Timestamp { get; set; } = DateTime.Now; // Default timestamp
+        public DateTime Timestamp { get; set; } = DateTime.Now; // Default timestamp that is used for editing
+        public bool IsEdited { get; set; } = false; // Indicates if message was edited
+        public DateTime CreatedTimestamp { get; set; } = DateTime.Now; // Timestamp only for NEW messages
+
+
 
         // Link to the conversation.
         public int ConversationId { get; set; }
