@@ -106,10 +106,13 @@ h1 {
     background: rgba(0, 0, 0, 0.6);
     padding: 2px 6px;
     border-radius: 4px;
-    z-index: 100; /* ensure the icons are on top */
+    z-index: 100; 
+}
+/* bring hovered message and actions above others (for some reason needed now) */
+.message-wrapper:hover {
+    z-index: 10; 
 }
 
-}
 .message-wrapper:hover .message-actions {
     display: block;
 }

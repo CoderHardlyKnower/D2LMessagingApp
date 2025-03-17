@@ -132,6 +132,10 @@
 
             // Instead of appending, insert the new message at the beginning of the container.
             messageList.insertBefore(wrapper, messageList.firstChild);
+            // Use a short delay to ensure layout is updated, then reset scrollTop to 0.
+            setTimeout(() => {
+                messageList.scrollTop = 0;
+            }, 10);
         });
 
 
