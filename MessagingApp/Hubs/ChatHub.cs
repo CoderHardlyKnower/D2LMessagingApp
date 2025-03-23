@@ -2,6 +2,7 @@
 using MessagingApp.Data;
 using MessagingApp.Models;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MessagingApp.Hubs
@@ -21,7 +22,6 @@ namespace MessagingApp.Hubs
 
         public async Task SendMessage(int senderId, string senderName, string message, int conversationId)
         {
-            // Save the message to the database with both timestamps.
             var newMessage = new Message
             {
                 SenderId = senderId,
@@ -29,20 +29,23 @@ namespace MessagingApp.Hubs
                 Content = message,
                 CreatedTimestamp = DateTime.Now,
                 Timestamp = DateTime.Now,
-                ConversationId = conversationId
+                ConversationId = conversationId,
+                IsRead = false // Ensure message is unread by default
             };
 
             _context.Messages.Add(newMessage);
             await _context.SaveChangesAsync();
 
-            // Broadcast the new message to the conversation group.
+            // Broadcast new message
             await Clients.Group("conversation_" + conversationId)
                 .SendAsync("ReceiveMessage", senderId, senderName, message, newMessage.Timestamp.ToShortTimeString(), newMessage.Id);
+
+            // Notify unread messages for real-time UI updates
+            await Clients.All.SendAsync("UpdateConversations");
         }
 
         public async Task JoinConversation(int conversationId)
         {
-            //Clents in a conversation will be added to a group named "conversation_{conversationId}"
             await Groups.AddToGroupAsync(Context.ConnectionId, "conversation_" + conversationId);
         }
 
@@ -51,26 +54,46 @@ namespace MessagingApp.Hubs
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, "conversation_" + conversationId);
         }
 
+        // NEW: Mark messages as read
+        public async Task MarkMessagesAsRead(int userId, int conversationId)
+        {
+            var messages = _context.Messages
+                .Where(m => m.ConversationId == conversationId && m.SenderId != userId && !m.IsRead)
+                .ToList();
 
-        // Edit a message
+            if (messages.Any())
+            {
+                messages.ForEach(m => m.IsRead = true);
+                await _context.SaveChangesAsync();
+
+                // Notify UI updates
+                await Clients.All.SendAsync("UpdateConversations");
+            }
+        }
+
+        // NEW: Handle typing indicators
+        public async Task TypingIndicator(int conversationId, int userId, bool isTyping)
+        {
+            await Clients.Group("conversation_" + conversationId)
+                .SendAsync("UserTyping", userId, isTyping);
+        }
+
+        // Edit message (with IsEdited flag)
         public async Task EditMessage(int messageId, string newContent)
         {
             var message = await _context.Messages.FindAsync(messageId);
             if (message != null)
             {
                 message.Content = newContent;
-                message.Timestamp = DateTime.Now; // Update the display timestamp.
-                message.IsEdited = true;          // Mark as edited.
+                message.Timestamp = DateTime.Now;
+                message.IsEdited = true;
                 await _context.SaveChangesAsync();
 
-                // Broadcast the updated message details.
                 await Clients.All.SendAsync("MessageEdited", messageId, newContent, message.Timestamp.ToShortTimeString());
             }
         }
 
-
-
-        // Delete a message
+        // Delete message (soft delete)
         public async Task DeleteMessage(int messageId)
         {
             var message = await _context.Messages.FindAsync(messageId);

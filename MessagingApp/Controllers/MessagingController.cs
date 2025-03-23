@@ -141,19 +141,22 @@ namespace MessagingApp.Controllers
                 {
                     c.ConversationId,
                     LastMessage = c.Messages.OrderByDescending(m => m.Timestamp).FirstOrDefault().Content,
-                    // Calculate missed (unread) message count based on the participant's LastRead timestamp.
-                    MissedCount = c.Messages.Count(m => m.Timestamp > c.Participants.FirstOrDefault(p => p.UserId == loggedInUserId).LastRead),
+                    // Only count messages that were not sent by the logged in user
+                    missedCount = c.Messages.Count(m =>
+                        m.Timestamp > c.Participants.FirstOrDefault(p => p.UserId == loggedInUserId).LastRead
+                        && m.SenderId != loggedInUserId),
                     Student = c.Participants
-                        .Where(p => p.UserId != loggedInUserId)
-                        .Select(p => new {
-                            p.User.UserId,
-                            p.User.Name
-                        })
-                        .FirstOrDefault(),
+                .Where(p => p.UserId != loggedInUserId)
+                .Select(p => new {
+                    p.User.UserId,
+                    p.User.Name
+                })
+                .FirstOrDefault(),
                     LastMessageTimestamp = c.Messages.OrderByDescending(m => m.Timestamp).FirstOrDefault().Timestamp
                 })
-                .OrderByDescending(c => c.LastMessageTimestamp)
-                .ToListAsync();
+        .OrderByDescending(c => c.LastMessageTimestamp)
+        .ToListAsync();
+
             return Json(conversations);
         }
     }
