@@ -40,10 +40,18 @@ namespace MessagingApp.Controllers
             // Get or create a conversation between the logged-in user and the selected student.
             var conversation = await GetOrCreateConversationAsync(loggedInUserId, studentId);
 
-            // Retrieve messages for this conversation, ordered by timestamp.
+            // Update LastRead for the logged-in user to now (marking messages as read)
+            var participant = conversation.Participants.FirstOrDefault(p => p.UserId == loggedInUserId);
+            if (participant != null)
+            {
+                participant.LastRead = DateTime.Now;
+                await _context.SaveChangesAsync();
+            }
+
+            // Retrieve messages for this conversation, ordered by the original send time.
             var messages = await _context.Messages
                 .Where(m => m.ConversationId == conversation.ConversationId)
-                .OrderBy(m => m.CreatedTimestamp) // Order by the original send time.
+                .OrderBy(m => m.CreatedTimestamp)
                 .ToListAsync();
 
             // Build a dictionary mapping sender IDs to names for display.
@@ -107,14 +115,13 @@ namespace MessagingApp.Controllers
 
             if (conversation == null)
             {
-                // Create a new conversation and save to generate a ConversationId.
                 conversation = new Conversation();
                 _context.Conversations.Add(conversation);
                 await _context.SaveChangesAsync();
 
                 // Add both users as participants.
-                var participantA = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userA };
-                var participantB = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userB };
+                var participantA = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userA, LastRead = DateTime.Now };
+                var participantB = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userB, LastRead = DateTime.Now };
                 _context.ConversationParticipants.AddRange(participantA, participantB);
                 await _context.SaveChangesAsync();
             }
@@ -123,10 +130,10 @@ namespace MessagingApp.Controllers
 
         //Get recent conversations for chat window in course selection
         public async Task<IActionResult> GetRecentConversations()
-        {
+        {           
             //Get logged in user
             int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
-
+           
             // Get recent conversations 
             var conversations = await _context.Conversations
                 .Where(c => c.Participants.Any(p => p.UserId == loggedInUserId) && c.Messages.Any())
@@ -134,21 +141,19 @@ namespace MessagingApp.Controllers
                 {
                     c.ConversationId,
                     LastMessage = c.Messages.OrderByDescending(m => m.Timestamp).FirstOrDefault().Content,
-
-                    Student = c.Participants            //Student logged in user is having conversation with
+                    // Calculate missed (unread) message count based on the participant's LastRead timestamp.
+                    MissedCount = c.Messages.Count(m => m.Timestamp > c.Participants.FirstOrDefault(p => p.UserId == loggedInUserId).LastRead),
+                    Student = c.Participants
                         .Where(p => p.UserId != loggedInUserId)
                         .Select(p => new {
                             p.User.UserId,
                             p.User.Name
                         })
                         .FirstOrDefault(),
-
                     LastMessageTimestamp = c.Messages.OrderByDescending(m => m.Timestamp).FirstOrDefault().Timestamp
                 })
                 .OrderByDescending(c => c.LastMessageTimestamp)
                 .ToListAsync();
-
-
             return Json(conversations);
         }
     }
