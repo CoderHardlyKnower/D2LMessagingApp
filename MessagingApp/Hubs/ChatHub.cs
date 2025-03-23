@@ -93,7 +93,7 @@ namespace MessagingApp.Hubs
             }
         }
 
-        // Delete message (soft delete)
+        // Delete message
         public async Task DeleteMessage(int messageId)
         {
             var message = await _context.Messages.FindAsync(messageId);

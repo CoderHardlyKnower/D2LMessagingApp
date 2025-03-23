@@ -2,51 +2,52 @@
 @* Displays Active Conversations on the Left Side of Messaging Screen *@
 
 <style>
-   /* Default conversation list size */
-.conversation-list-container {
-    width: 300px;
-    position: fixed;
-    top: 87px;
-    bottom: 60px; 
-    left: 15px;
-    padding: 15px;
-    border-right: 1px solid #ddd;
-    overflow-y: auto;
-    background: #ffffff;
-    display: flex;
-    flex-direction: column;
-    z-index: 1000;
-}
-
-/* Shrink it instead of stacking on top at smaller screens */
-@@media (max-width: 1050px) {
+    /* Default conversation list size */
     .conversation-list-container {
-        width: 220px; 
-    }
-}
-
-@@media (max-width: 900px) {
-    .conversation-list-container {
-        width: 180px; /* Further reduce width for smaller screens */
-    }
-}
-@@media (max-width: 750px) {
-    .conversation-list-container {
-        width: 100%; 
-        position: relative; 
-        left: 0;
-        top: 0;
-        margin-bottom: 10px; 
+        width: 300px;
+        position: fixed;
+        top: 87px;
+        bottom: 60px;
+        left: 20px;
+        padding: 15px;
+        border-right: 1px solid #ddd;
+        overflow-y: auto;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
     }
 
-    .message-container {
-        margin-left: 0; 
-        width: 100%;
-        max-width: 100%;
+    /* Shrink */
+    @@media (max-width: 1050px) {
+        .conversation-list-container {
+            width: 220px;
+        }
     }
-}
 
-    /* Conversation list should take up remaining space */
+    @@media (max-width: 900px) {
+        .conversation-list-container {
+            width: 180px; 
+        }
+    }
+    /* Once screen gets this small, stacking is prefered for now*/
+    @@media (max-width: 750px) {
+        .conversation-list-container {
+            width: 100%;
+            position: relative;
+            left: 0;
+            top: 0;
+            margin-bottom: 10px;
+        }
+
+        .message-container {
+            margin-left: 0;
+            width: 100%;
+            max-width: 100%;
+        }
+    }
+
+    /* Conversation list */
     .conversation-list {
         flex-grow: 1;
         overflow-y: auto;
@@ -72,7 +73,7 @@
             font-weight: bold;
         }
 
-    /* Notification badge */
+    /* Notification badge *THIS IS NOT WOKRING RIGHT NOW* */
     .badge-unread {
         background: red;
         color: white;
@@ -80,6 +81,52 @@
         border-radius: 50%;
         font-size: 12px;
     }
+
+    /* Conversation line styling for the list */
+    .conversation {
+        font-size: 12px; /* Smaller font */
+        color: black; /* Black text */
+        border-bottom: 1px solid #eee; /* Separator line */
+        padding: 10px 8px; /* Increased vertical padding */
+        transition: background-color 0.2s;
+    }
+
+        .conversation:hover {
+            background-color: #f5f5f5;
+        }
+
+        .conversation.unread {
+            font-weight: bold;
+        }
+
+        .conversation h4 {
+            font-size: 14px; 
+            margin: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .conversation span {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .conversation p {
+            font-size: 12px;
+            margin: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        /* Badge styling for conversation items */
+        .conversation .badge {
+            font-size: 10px; 
+            padding: 2px 4px;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
 </style>
 
 <div class="conversation-list-container">
@@ -89,70 +136,78 @@
     </div>
 </div>
 
-
 <script>
-    // Fetch active conversations
+    // Get the current conversationId from the view
+    var currentConversationId = '@(ViewBag.ConversationId ?? 0)';
+
+    // Fetch recent conversations
     async function fetchActiveConversations() {
         try {
-            const response = await fetch('/Messaging/GetRecentConversations');
-            if (!response.ok) throw new Error("Couldn't fetch conversations.");
-            const conversations = await response.json();
-
-            const conversationList = document.getElementById("conversationList");
-            conversationList.innerHTML = ""; // Clear previous list
-
-            if (conversations.length === 0) {
-                conversationList.innerHTML = "<p>No active conversations</p>";
-                return;
+            let url = '/Messaging/GetRecentConversations';
+            if (currentConversationId && currentConversationId != '0') {
+                url += '?excludeConversationId=' + currentConversationId;
             }
-
-            conversations.forEach(conv => {
-                let isUnread = conv.missedCount > 0;
-                let lastMessage = isUnread ? `<b>${conv.lastMessage}</b>` : conv.lastMessage;
-                let badge = isUnread ? `<span class="badge-unread">${conv.missedCount}</span>` : "";
-
-                let conversationHtml = `
-                        <div class="conversation-item ${isUnread ? 'unread' : ''}" onclick="window.location.href='/Messaging/Index?conversationId=${conv.conversationId}'">
-                            <span>${conv.student.name}</span>
-                            ${badge}
-                        </div>
-                    `;
-
-                conversationList.innerHTML += conversationHtml;
-            });
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error("Couldn't get recent conversations");
+            }
+            const data = await response.json();
+            return data;
         } catch (error) {
             console.error(error);
+            return [];
         }
     }
 
-    // Real-time SignalR update function
-    function updateConversationList(conversationId, senderName, lastMessage, unreadCount) {
-        let conversationItems = document.querySelectorAll('.conversation-item');
-        let found = false;
+    // Render the conversation list
+    function renderConversations(conversations) {
+        const conversationList = document.getElementById("conversationList");
+        conversationList.innerHTML = ""; // Clear previous content
 
-        conversationItems.forEach(item => {
-            if (item.getAttribute('onclick').includes(`conversationId=${conversationId}`)) {
-                item.classList.add('unread');
-                item.innerHTML = `<span>${senderName}</span> <span class="badge-unread">${unreadCount}</span>`;
-                found = true;
+        if (conversations.length === 0) {
+            conversationList.innerHTML = "<p>No active conversations</p>";
+            return;
+        }
+
+        conversations.forEach(conversation => {
+            const date = new Date(conversation.lastMessageTimestamp);
+            const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+            // Prepare red badge if there are missed messages.  This is not displaying right now
+            var badge = "";
+            if (conversation.missedCount > 0) {
+                badge = `<span class="badge bg-danger">${conversation.missedCount}</span>`;
             }
-        });
 
-        // If conversation does not exist, add it
-        if (!found) {
-            let newConversation = `
-                    <div class="conversation-item unread" onclick="window.location.href='/Messaging/Index?conversationId=${conversationId}'">
-                        <span>${senderName}</span> <span class="badge-unread">${unreadCount}</span>
-                    </div>
-                `;
-            document.getElementById("conversationList").innerHTML += newConversation;
-        }
+            // Bold the last message if there are missed messages
+            var messageText = conversation.missedCount > 0 ? `<b>${conversation.lastMessage}</b>` : conversation.lastMessage;
+
+            // Unread class if there are missed messages
+            var unreadClass = conversation.missedCount > 0 ? " unread" : "";
+
+            var conversationHtml = `
+                        <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}&conversationId=${conversation.conversationId}">
+                            <div class="conversation${unreadClass}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4>${conversation.student.name}${badge}</h4>
+                                    <span>${time}</span>
+                                </div>
+                                <p>${messageText}</p>
+                            </div>
+                        </a>
+                    `;
+            conversationList.innerHTML += conversationHtml;
+        });
     }
 
-    // Fetch conversations initially and every 30 seconds
-    fetchActiveConversations();
-    setInterval(fetchActiveConversations, 30000);
+    async function updateConversations() {
+        const conversations = await fetchActiveConversations();
+        renderConversations(conversations);
+    }
 
-    // Listen for real-time updates
-    connection.on("UpdateConversationList", updateConversationList);
+    // Initial load of conversations.
+    updateConversations();
+
+    // Refresh conversation list every 30 seconds.
+    setInterval(updateConversations, 30000);
 </script>
