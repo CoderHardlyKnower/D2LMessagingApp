@@ -37,7 +37,7 @@ namespace MessagingApp.Controllers
             // Get logged-in user's ID from claims.
             int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
 
-            // Get or create a conversation between the logged-in user and the selected student
+            // Get or create a conversation between the logged-in user and the selected student.
             var conversation = await GetOrCreateConversationAsync(loggedInUserId, studentId);
 
             // Retrieve messages for this conversation, ordered by timestamp.
