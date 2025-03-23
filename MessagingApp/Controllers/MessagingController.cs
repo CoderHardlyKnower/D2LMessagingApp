@@ -120,5 +120,36 @@ namespace MessagingApp.Controllers
             }
             return conversation;
         }
+
+        //Get recent conversations for chat window in course selection
+        public async Task<IActionResult> GetRecentConversations()
+        {
+            //Get logged in user
+            int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
+
+            // Get recent conversations 
+            var conversations = await _context.Conversations
+                .Where(c => c.Participants.Any(p => p.UserId == loggedInUserId) && c.Messages.Any())
+                .Select(c => new
+                {
+                    c.ConversationId,
+                    LastMessage = c.Messages.OrderByDescending(m => m.Timestamp).FirstOrDefault().Content,
+
+                    Student = c.Participants            //Student logged in user is having conversation with
+                        .Where(p => p.UserId != loggedInUserId)
+                        .Select(p => new {
+                            p.User.UserId,
+                            p.User.Name
+                        })
+                        .FirstOrDefault(),
+
+                    LastMessageTimestamp = c.Messages.OrderByDescending(m => m.Timestamp).FirstOrDefault().Timestamp
+                })
+                .OrderByDescending(c => c.LastMessageTimestamp)
+                .ToListAsync();
+
+
+            return Json(conversations);
+        }
     }
 }
