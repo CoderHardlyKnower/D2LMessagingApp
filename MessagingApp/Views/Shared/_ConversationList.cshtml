@@ -2,47 +2,49 @@
 @* Displays Active Conversations on the Left Side of Messaging Screen *@
 
 <style>
+   /* Default conversation list size */
+.conversation-list-container {
+    width: 300px;
+    position: fixed;
+    top: 87px;
+    bottom: 60px; 
+    left: 15px;
+    padding: 15px;
+    border-right: 1px solid #ddd;
+    overflow-y: auto;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+/* Shrink it instead of stacking on top at smaller screens */
+@@media (max-width: 1050px) {
     .conversation-list-container {
-        width: 300px;
-        position: fixed;
-        top: 87px; /* Adjust if your header is taller */
-        bottom: 60px; /* Keeps it flush with the footer */
-        left: 15px;
-        padding: 15px;
-        border-right: 1px solid #ddd;
-        overflow-y: auto;
-        background: #ffffff;
-        display: flex;
-        flex-direction: column;
-        z-index: 1000;
-        overflow-y: auto;
+        width: 220px; 
+    }
+}
+
+@@media (max-width: 900px) {
+    .conversation-list-container {
+        width: 180px; /* Further reduce width for smaller screens */
+    }
+}
+@@media (max-width: 750px) {
+    .conversation-list-container {
+        width: 100%; 
+        position: relative; 
+        left: 0;
+        top: 0;
+        margin-bottom: 10px; 
     }
 
-    /* Instead of switching at 1009px, switch at 1050px to prevent weird width issues */
-    @@media (max-width: 1050px) {
-        .conversation-list-container {
-            position: relative;
-            width: 100%; /* Take full width to prevent squishing */
-            top: 0;
-            left: 0;
-            bottom: auto;
-            border-right: none;
-            margin: 0 auto 20px auto; /* Even margins */
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-
-        }
+    .message-container {
+        margin-left: 0; 
+        width: 100%;
+        max-width: 100%;
     }
-
-    /* Keep the look consistent for smaller screens */
-    @@media (max-width: 750px) {
-        .conversation-list-container {
-            padding: 10px;
-            width: calc(100% - 30px);
-        }
-    }
-
+}
 
     /* Conversation list should take up remaining space */
     .conversation-list {
