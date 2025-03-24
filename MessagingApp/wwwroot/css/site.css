@@ -40,7 +40,7 @@ body {
 h1 {
     color: #333;
 }
-
+/*==========Class list styling =============*/
 /* Class List Container */
 .class-list-container {
     width: 90vw;
@@ -59,7 +59,7 @@ h1 {
     text-align: center;
 }
 
-/* Back Button - Only the icon is blue */
+/* Back Button */
 .back-button i {
     color: #007bff !important;
 }
@@ -74,7 +74,7 @@ h1 {
     margin-bottom: 8px;
 }
 
-/* First/Last Name Label */
+/* First/Last Name */
 .name-label {
     font-size: 14px;
     font-weight: bold;
@@ -96,7 +96,8 @@ h1 {
     cursor: pointer;
 }
 
-/* Highlighting Selection */
+
+/* Highlighting Checkbox Selection */
 .selected-row {
     background-color: #cce5ff !important;
 }
@@ -182,15 +183,50 @@ h1 {
         font-size: 14px;
     }
 
-.btn-confirm {
-    background-color: #007bff;
-    color: #fff;
+/* Group Chat Confirm Button */
+.btn-GCconfirm {
+    background-color: #007bff; 
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background 0.3s, transform 0.1s ease-in-out;
 }
 
-.btn-cancel {
-    background-color: #6c757d;
-    color: #fff;
+    .btn-GCconfirm:hover {
+        background-color: #0056b3; 
+        transform: scale(1.05);
+    }
+
+    .btn-GCconfirm:active {
+        transform: scale(0.95);
+    }
+
+/*Group Chat Cancel Button */
+.btn-GCcancel {
+    background-color: #dc3545; 
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background 0.3s, transform 0.1s ease-in-out;
 }
+
+    .btn-GCcancel:hover {
+        background-color: #b30021; 
+        transform: scale(1.05);
+    }
+
+    .btn-GCcancel:active {
+        transform: scale(0.95);
+    }
+
 
 
 
@@ -253,18 +289,27 @@ h1 {
 
 @media (max-width: 750px) {
     .conversation-list-container {
-        width: 100%; 
-        position: relative; 
+        width: 100%;
+        position: relative;
         left: 0;
         top: 0;
-        margin-bottom: 10px; 
+        margin-bottom: 10px;
     }
 
     .message-container {
-        margin-left: 0; 
-        width: 100%; 
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .message-wrapper:hover .message-actions {
+        display: none;
+    }
+
+    .message-wrapper.show-actions .message-actions {
+        display: block;
     }
 }
+
 
 .message-list {
     flex-grow: 1;
@@ -340,15 +385,17 @@ h1 {
 
 /* Message Bubble */
 .message {
-    padding: 8px 12px;
-    border-radius: 15px;
-    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    max-width: 70%;
     word-wrap: break-word;
     white-space: normal;
     text-align: left;
     line-height: 1.4;
     font-size: 14px;
     display: block;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s, background-color 0.2s;
 }
 
 /* Sent Messages */
@@ -357,12 +404,13 @@ h1 {
 }
 
 .sent-message {
-    background-color: #007bff;
+    background-color: #0078D4; 
     color: white;
     align-self: flex-end;
     text-align: left;
-    padding: 8px 12px;
+    padding: 10px 14px;
     margin-right: 5px;
+    border-radius: 18px;
 }
 
 /* Received Messages */
@@ -371,41 +419,78 @@ h1 {
 }
 
 .received-message {
-    background-color: #e4e6eb;
+    background-color: #f1f1f1;
     color: black;
     align-self: flex-start;
     text-align: left;
-    padding: 8px 12px;
+    padding: 10px 14px;
     margin-left: 5px;
+    border-radius: 18px;
 }
 
-/* Message Input Form */
 .add-message-form {
+    border-top: 1px solid #ddd;
+    padding: 12px;
+    background: #fff;
     display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
+    align-items: center;
+    gap: 10px;
 }
 
+    /* Input field */
     .add-message-form input {
         flex: 1;
-        padding: 10px;
-        border-radius: 5px;
+        background: #fafafa;
         border: 1px solid #ccc;
-        margin-right: 10px;
+        border-radius: 20px;
+        padding: 10px 14px;
+        font-size: 16px;
+        transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    .add-message-form button {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-
-        .add-message-form button:hover {
-            background-color: #0056b3;
+        .add-message-form input:focus {
+            outline: none;
+            border-color: #6264a7;
+            box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.2);
         }
+
+    /* Send button */
+    .add-message-form .send-btn {
+        background: #0078D4;
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: background 0.3s, box-shadow 0.3s, transform 0.1s ease-in-out;
+    }
+
+        .add-message-form .send-btn i {
+            color: white;
+            transition: color 0.2s;
+        }
+
+        .add-message-form .send-btn:hover {
+            background: #0056b3;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            transform: scale(1.05);
+        }
+
+        .add-message-form .send-btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.3);
+        }
+
+        .add-message-form .send-btn:active {
+            transform: scale(0.95);
+        }
+
+
 
 /* Styling for message wrappers */
 .message-wrapper {

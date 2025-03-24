@@ -33,7 +33,7 @@
         </head>
         <body>
             <div class="message-container">
-                <h1>Messaging with @studentName</h1>
+                <h2 class="message-header-title">Messaging with @studentName</h2>
                 <div class="message-list" id="messageList">
                     @if (Model != null && Model.Any())
                     {
@@ -73,7 +73,10 @@
                     <input type="hidden" name="studentName" value="@studentName" />
                     <input type="hidden" name="conversationId" value="@conversationId" />
                     <input type="text" name="content" id="contentInput" placeholder="Type your message here..." required />
-                    <button type="submit">Send</button>
+                    <button type="submit" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+
                 </form>
             </div>
 
@@ -296,8 +299,21 @@
                 wrapper.innerHTML = `<div class="deleted-message">${senderName} deleted a message</div>`;
             }
         });
+        //Edit and delete icons on message bubbles Listen for a click even for mobile phones instead of hover
+        document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".message-wrapper").forEach(wrapper => {
+        wrapper.addEventListener("click", function (event) {
+            if (event.target.closest(".message-actions")) return;
 
-    </script>
+            // Close all other open message actions
+            document.querySelectorAll(".message-wrapper.show-actions").forEach(el => {
+                if (el !== this) el.classList.remove("show-actions");
+            });
 
-</body>
+            this.classList.toggle("show-actions");
+        });
+    });
+});
+ </script>
+ </body>
 </html>

@@ -163,7 +163,6 @@
             return [];
         }
     }
-
     // Render the conversation list
     function renderConversations(conversations) {
         const conversationList = document.getElementById("conversationList");
@@ -175,10 +174,15 @@
         }
 
         conversations.forEach(conversation => {
+            // If this conversation is the current one, force its unread count to 0.
+            if (conversation.conversationId == currentConversationId) {
+                conversation.missedCount = 0;
+            }
+
             const date = new Date(conversation.lastMessageTimestamp);
             const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-            // Prepare red badge if there are missed messages.  This is not displaying right now
+            // Prepare red badge if there are missed messages.
             var badge = "";
             if (conversation.missedCount > 0) {
                 badge = `<span class="badge bg-danger">${conversation.missedCount}</span>`;
@@ -191,17 +195,15 @@
             var unreadClass = conversation.missedCount > 0 ? " unread" : "";
 
             var conversationHtml = `
-        <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}&conversationId=${conversation.conversationId}" class="conversation ${unreadClass}">
-            <div class="conversation-header">
-                <h4>${conversation.student.name}</h4>
-                <span class="timestamp">${time}</span>
-            </div>
-            <p>${messageText}</p>
-            <div class="badge-container">${badge}</div> <!-- Wrapping badge in a div to control layout -->
-        </a>
-    `;
-
-
+                <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}&conversationId=${conversation.conversationId}" class="conversation ${unreadClass}">
+                    <div class="conversation-header">
+                        <h4>${conversation.student.name}</h4>
+                        <span class="timestamp">${time}</span>
+                    </div>
+                    <p>${messageText}</p>
+                    <div class="badge-container">${badge}</div>
+                </a>
+            `;
             conversationList.innerHTML += conversationHtml;
         });
     }

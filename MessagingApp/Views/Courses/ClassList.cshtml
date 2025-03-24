@@ -37,17 +37,18 @@
         <div class="students-container">
             @foreach (var student in Model.Students)
             {
-                <div class="user-container student-row">
-                    <input type="checkbox" class="student-checkbox" value="@student.UserId" data-studentname="@student.Name" />
-                    <a asp-action="Index"
-                       asp-controller="Messaging"
-                       asp-route-studentId="@student.UserId"
-                       asp-route-studentName="@student.Name"
-                       class="text-decoration-none message-link">
+                <a asp-action="Index"
+                   asp-controller="Messaging"
+                   asp-route-studentId="@student.UserId"
+                   asp-route-studentName="@student.Name"
+                   class="text-decoration-none full-row-link">
+                    <div class="user-container student-row">
+                        <input type="checkbox" class="student-checkbox" value="@student.UserId" data-studentname="@student.Name" />
                         <div class="user">@student.Name</div>
-                    </a>
-                </div>
+                    </div>
+                </a>
             }
+
         </div>
     </div>
 
@@ -60,8 +61,8 @@
             <input type="text" id="gcName" placeholder="Enter group chat name" />
             <div class="selected-users" id="selectedUsers"></div>
             <div class="modal-buttons">
-                <button id="gcConfirm" class="btn-confirm">Create</button>
-                <button id="gcCancel" class="btn-cancel">Cancel</button>
+                <button id="gcConfirm" class="btn-GCconfirm">Create</button>
+                <button id="gcCancel" class="btn-GCcancel">Cancel</button>
             </div>
         </div>
     </div>
