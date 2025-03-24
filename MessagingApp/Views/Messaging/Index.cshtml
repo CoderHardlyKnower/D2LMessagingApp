@@ -7,79 +7,86 @@
     string studentName = ViewBag.StudentName as string;
     int conversationId = (int)ViewBag.ConversationId;
 }
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar for Active Conversations -->
+        <div class="col-md-3">
+            @Html.Partial("_ConversationList")
+        </div>
 
-<!--
-    Thisis the Messaging view for displaying and sending messages
-    This view renders the messaging interface and handles client-side operations such as
-    sending, editing, and deleting messages via SignalR.
--->
+        <!--
+            Thisis the Messaging view for displaying and sending messages
+            This view renders the messaging interface and handles client-side operations such as
+            sending, editing, and deleting messages via SignalR.
+        -->
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <title>Messaging - MessagingApp</title>
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <!-- SignalR client library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
-    <!-- FontAwesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
-<body>
-    <div class="message-container">
-        <h1>Messaging with @studentName</h1>
-        <div class="message-list" id="messageList">
-            @if (Model != null && Model.Any())
-            {
-                foreach (var message in Model.Reverse())
-                {
-                    bool isSentByUser = message.SenderId == loggedInUserId;
-                    <div class="message-wrapper @(isSentByUser ? "sent" : "received")" data-message-id="@message.Id">
-                        <div class="message-header">
-                            <small class="message-info">
-                                @(userNames.ContainsKey(message.SenderId) ? userNames[message.SenderId] : "Unknown")
-                                - @message.Timestamp.ToShortTimeString()
-                                @Html.Raw(message.IsEdited ? " <span class=\"edited-label\">(edited)</span>" : "")
-                            </small>
-                            @if (isSentByUser)
-                            {
-                                <div class="message-actions">
-                                    <i class="fas fa-edit edit-icon" title="Edit"></i>
-                                    <i class="fas fa-trash delete-icon" title="Delete"></i>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8" />
+            <title>Messaging - MessagingApp</title>
+            <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+            <!-- SignalR client library -->
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+            <!-- FontAwesome for icons -->
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        </head>
+        <body>
+            <div class="message-container">
+                <h1>Messaging with @studentName</h1>
+                <div class="message-list" id="messageList">
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var message in Model.Reverse())
+                        {
+                            bool isSentByUser = message.SenderId == loggedInUserId;
+                            <div class="message-wrapper @(isSentByUser ? "sent" : "received")" data-message-id="@message.Id">
+                                <div class="message-header">
+                                    <small class="message-info">
+                                        @(userNames.ContainsKey(message.SenderId) ? userNames[message.SenderId] : "Unknown")
+                                        - @message.Timestamp.ToShortTimeString()
+                                        @Html.Raw(message.IsEdited ? " <span class=\"edited-label\">(edited)</span>" : "")
+                                    </small>
+                                    @if (isSentByUser)
+                                    {
+                                        <div class="message-actions">
+                                            <i class="fas fa-edit edit-icon" title="Edit"></i>
+                                            <i class="fas fa-trash delete-icon" title="Delete"></i>
+                                        </div>
+                                    }
                                 </div>
-                            }
-                        </div>
-                        <div class="message @(isSentByUser ? "sent-message" : "received-message")">
-                            @message.Content
-                        </div>
-                    </div>
-                }
-            }
-            else
-            {
-                <p>No messages available.</p>
-            }
-        </div>
+                                <div class="message @(isSentByUser ? "sent-message" : "received-message")">
+                                    @message.Content
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p>No messages available.</p>
+                    }
+                </div>
 
-        <form class="add-message-form" id="messageForm" method="post" asp-action="AddMessage" asp-controller="Messaging">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="studentId" value="@ViewBag.StudentId" />
-            <input type="hidden" name="studentName" value="@studentName" />
-            <input type="hidden" name="conversationId" value="@conversationId" />
-            <input type="text" name="content" id="contentInput" placeholder="Type your message here..." required />
-            <button type="submit">Send</button>
-        </form>
-    </div>
+                <form class="add-message-form" id="messageForm" method="post" asp-action="AddMessage" asp-controller="Messaging">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="studentId" value="@ViewBag.StudentId" />
+                    <input type="hidden" name="studentName" value="@studentName" />
+                    <input type="hidden" name="conversationId" value="@conversationId" />
+                    <input type="text" name="content" id="contentInput" placeholder="Type your message here..." required />
+                    <button type="submit">Send</button>
+                </form>
+            </div>
 
-    <!-- Modal Confirmation for deletion -->
-    <div class="modal-overlay" id="confirmModal">
-        <div class="modal-content">
-            <h2>Confirm Deletion</h2>
-            <p>Are you sure you want to delete this message?</p>
-            <button class="btn-confirm" id="confirmDeleteBtn">Yes, Delete</button>
-            <button class="btn-cancel" id="cancelDeleteBtn">Cancel</button>
-        </div>
-    </div>
+            <!-- Modal Confirmation for deletion -->
+            <div class="modal-overlay" id="confirmModal">
+                <div class="modal-content">
+                    <h2>Confirm Deletion</h2>
+                    <p>Are you sure you want to delete this message?</p>
+                    <button class="btn-confirm" id="confirmDeleteBtn">Yes, Delete</button>
+                    <button class="btn-cancel" id="cancelDeleteBtn">Cancel</button>
+                </div>
+            </div>
+
 
     <script>
         //Global variable to store the message ID pending deletion
@@ -291,5 +298,6 @@
         });
 
     </script>
+
 </body>
 </html>

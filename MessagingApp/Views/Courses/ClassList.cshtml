@@ -5,35 +5,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Class List - MessagingApp</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/classlist.css" asp-append-version="true" />
+    <style>
+      
+    </style>
 </head>
 <body>
-    <div class="class-list">
-        <div class="d-flex align-items-center justify-content-center position-relative">
-            <a href="javascript:history.back()" class="btn btn-link" style="position:absolute; left: 0">
-                <i class="bi bi-arrow-left fs-3"></i>
-            </a>
-            <h2 class="mx-auto">@Model.Course.Name</h2>
-        </div>
-        <div class="p-2 text-center">Instructor</div>
-        <div class="user">@Model.Instructor.Name</div>
-        <div class="p-2 text-center">Students In Course</div>
-        @foreach (var student in Model.Students)
-        {
-            <!-- Wrapping student names in an anchor tag to enable navigation to the messaging page -->
-            <a asp-action="Index"
-               asp-controller="Messaging"
-               asp-route-studentId="@student.UserId"
-               asp-route-studentName="@student.Name"
-               class="text-decoration-none"
-               style="text-decoration: none; color: inherit;">
-                <div class="user">@student.Name</div>
-            </a>
-        }
+    <div class="class-list-container">
+        <!-- Back button -->
+        <a href="javascript:history.back()" class="back-button">
+            <i class="bi bi-arrow-left fs-3"></i>
+        </a>
+        <h2 class="course-title">@Model.Course.Name</h2>
+        <!-- Start Group Chat Button (hidden until 2+ students are selected) -->
+        <button id="startGroupChat" class="group-chat-btn btn btn-primary">Start Group Chat</button>
+        <table class="class-table">
+            <thead>
+                <tr>
+                    <th colspan="3" class="section-header">Instructor</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="name-cell">
+                        <a asp-action="Index"
+                           asp-controller="Messaging"
+                           asp-route-studentId="@Model.Instructor.UserId"
+                           asp-route-studentName="@Model.Instructor.Name"
+                           class="message-link">
+                            @Model.Instructor.Name
+                        </a>
+                    </td>
+                    <td class="email-cell">@Model.Instructor.Email</td>
+                </tr>
+            </tbody>
+            <thead>
+                <tr>
+                    <th colspan="3" class="section-header">Students In Course</th>
+                </tr>
+                <tr>
+                    <th class="checkbox-cell"></th>
+                    <th class="name-cell">Name</th>
+                    <th class="email-cell">Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var student in Model.Students)
+                {
+                    <tr class="student-row">
+                        <td class="checkbox-cell">
+                            <input type="checkbox" class="student-checkbox" value="@student.UserId" data-studentname="@student.Name" />
+                        </td>
+                        <td class="name-cell">
+                            <a asp-action="Index"
+                               asp-controller="Messaging"
+                               asp-route-studentId="@student.UserId"
+                               asp-route-studentName="@student.Name"
+                               class="message-link">
+                                @student.Name
+                            </a>
+                        </td>
+                        <td class="email-cell">@student.Email</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
+    @Html.Partial("RecentConversations")
+
+    <!-- Group Chat Modal -->
+    <div id="gcModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>New Group Chat</h2>
+            <input type="text" id="gcName" placeholder="Enter group chat name" />
+            <div class="selected-users" id="selectedUsers">
+                <!-- Selected user names will be displayed here -->
+            </div>
+            <div class="modal-buttons">
+                <button id="gcConfirm" class="btn-confirm">Create</button>
+                <button id="gcCancel" class="btn-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update the visibility of the "Start Group Chat" button based on checkbox selections
+        function updateGroupChatButton() {
+            const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+            const button = document.getElementById('startGroupChat');
+            button.style.display = checkboxes.length >= 2 ? 'block' : 'none';
+        }
+        function updateRowHighlighting() {
+            document.querySelectorAll('.student-row').forEach(row => {
+                const checkbox = row.querySelector('.student-checkbox');
+                if (checkbox && checkbox.checked) {
+                    row.classList.add('selected-row');
+                } else {
+                    row.classList.remove('selected-row');
+                }
+            });
+        }
+        //list of selected student names in the modal
+        function updateSelectedUsersDisplay() {
+            const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+            const names = Array.from(selectedCheckboxes).map(chk => chk.getAttribute('data-studentname'));
+            const displayDiv = document.getElementById('selectedUsers');
+            displayDiv.textContent = "Participants: " + names.join(', ');
+        }
+        //Listenoig for changes on each student checkbox
+        document.querySelectorAll('.student-checkbox').forEach(chk => {
+            chk.addEventListener('change', function () {
+                updateGroupChatButton();
+                updateRowHighlighting();
+            });
+        });
+        // Handle the Start Group Chat button click
+        document.getElementById('startGroupChat').addEventListener('click', function () {
+            updateSelectedUsersDisplay();
+            document.getElementById('gcModal').style.display = 'flex';
+        });
+        // Handle modal Cancel button.
+        document.getElementById('gcCancel').addEventListener('click', function () {
+            // Hide the modal.
+            document.getElementById('gcModal').style.display = 'none';
+        });
+        // Handle modal Confirm button
+        document.getElementById('gcConfirm').addEventListener('click', function () {
+            const gcName = document.getElementById('gcName').value.trim();
+            if (!gcName) {
+                alert('Please enter a group chat name.');
+                return;
+            }
+            // Get selected student IDs.
+            const selectedIds = Array.from(document.querySelectorAll('.student-checkbox:checked'))
+                .map(chk => chk.value);
+            console.log('Creating Group Chat:', gcName, 'with participants:', selectedIds);
+            document.getElementById('gcModal').style.display = 'none';
+            document.getElementById('gcName').value = "";
+        });
+    </script>
 </body>
 </html>

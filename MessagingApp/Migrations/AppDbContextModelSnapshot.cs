@@ -46,6 +46,9 @@ namespace MessagingApp.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("LastRead")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("ConversationId", "UserId");
 
                     b.HasIndex("UserId");
@@ -108,7 +111,16 @@ namespace MessagingApp.Migrations
                     b.Property<DateTime>("CreatedTimestamp")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsEdited")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsTyping")
                         .HasColumnType("bit");
 
                     b.Property<int>("ReceiverId")
