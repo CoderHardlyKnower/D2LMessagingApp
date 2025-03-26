@@ -78,6 +78,11 @@ namespace MessagingApp.Hubs
                 .SendAsync("UserTyping", userId, isTyping);
         }
 
+        public async Task BroadcastUpdateConversations()
+        {
+            await Clients.All.SendAsync("UpdateConversations");
+        }
+
         // Edit message (with IsEdited flag)
         public async Task EditMessage(int messageId, string newContent)
         {

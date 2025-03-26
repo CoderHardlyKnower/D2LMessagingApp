@@ -141,21 +141,25 @@ void SeedDatabase(AppDbContext context)
                     new Enrollment(students[4].UserId, courses[1].CourseId),
                     new Enrollment(students[4].UserId, courses[2].CourseId),
                     new Enrollment(students[4].UserId, courses[3].CourseId),
+                    new Enrollment(students[4].UserId, courses[5].CourseId),
 
                     new Enrollment(students[5].UserId, courses[0].CourseId),
                     new Enrollment(students[5].UserId, courses[1].CourseId),
                     new Enrollment(students[5].UserId, courses[2].CourseId),
                     new Enrollment(students[5].UserId, courses[3].CourseId),
+                    new Enrollment(students[5].UserId, courses[5].CourseId),
 
                     new Enrollment(students[6].UserId, courses[0].CourseId),
                     new Enrollment(students[6].UserId, courses[1].CourseId),
                     new Enrollment(students[6].UserId, courses[2].CourseId),
                     new Enrollment(students[6].UserId, courses[3].CourseId),
+                    new Enrollment(students[6].UserId, courses[5].CourseId),
 
                     new Enrollment(students[7].UserId, courses[0].CourseId),
                     new Enrollment(students[7].UserId, courses[1].CourseId),
                     new Enrollment(students[7].UserId, courses[2].CourseId),
                     new Enrollment(students[7].UserId, courses[3].CourseId),
+                    new Enrollment(students[7].UserId, courses[5].CourseId),
 
                 });
 

@@ -164,6 +164,16 @@
             contentInput.value = "";
         });
 
+                //refresh the conversation list.
+                connection.on("UpdateConversations", () => {
+                    if (typeof updateConversations === "function") {
+                        updateConversations();
+                    } else {
+                        console.log("updateConversations function not found.");
+                    }
+                });
+
+
         // Helper: Cancel any active edit inputs.
         function cancelActiveEdits() {
             const activeInputs = document.querySelectorAll(".message-wrapper input[type='text']");
@@ -313,7 +323,7 @@
             this.classList.toggle("show-actions");
         });
     });
-});
+});       
  </script>
  </body>
 </html>
