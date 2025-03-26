@@ -2,114 +2,114 @@
 @* Displays Active Conversations on the Left Side of Messaging Screen *@
 
 <style>
-   /* Default conversation list size */
-.conversation-list-container {
-    width: 300px;
-    position: fixed;
-    top: 87px;
-    bottom: 60px;
-    left: 20px;
-    padding: 15px;
-    border-right: 1px solid #ddd;
-    overflow-y: auto;
-    background: #ffffff;
-    display: flex;
-    flex-direction: column;
-    z-index: 1000;
-}
-
-/* Shrinking for smaller screens */
-@@media (max-width: 1050px) {
+    /* Default conversation list size */
     .conversation-list-container {
-        width: 220px;
+        width: 300px;
+        position: fixed;
+        top: 87px;
+        bottom: 60px;
+        left: 20px;
+        padding: 15px;
+        border-right: 1px solid #ddd;
+        overflow-y: auto;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
     }
-}
 
-@@media (max-width: 900px) {
-    .conversation-list-container {
-        width: 180px;
+    /* Shrinking for smaller screens */
+    @@media (max-width: 1050px) {
+        .conversation-list-container {
+            width: 220px;
+        }
     }
-}
 
-/* Stacking layout on small screens */
-@@media (max-width: 750px) {
-    .conversation-list-container {
-        width: 100%;
+    @@media (max-width: 900px) {
+        .conversation-list-container {
+            width: 180px;
+        }
+    }
+
+    /* Stacking layout on small screens */
+    @@media (max-width: 750px) {
+        .conversation-list-container {
+            width: 100%;
+            position: relative;
+            left: 0;
+            top: 0;
+            margin-bottom: 10px;
+        }
+
+        .message-container {
+            margin-left: 0;
+            width: 100%;
+            max-width: 100%;
+        }
+    }
+
+    /* Scrollable conversation list */
+    .conversation-list {
+        flex-grow: 1;
+        overflow-y: auto;
+    }
+
+    /* Individual conversation items */
+    .conversation {
+        display: flex;
+        flex-direction: column;
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.2s, box-shadow 0.2s;
         position: relative;
-        left: 0;
-        top: 0;
-        margin-bottom: 10px;
+        text-decoration: none;
+        color: inherit;
     }
 
-    .message-container {
-        margin-left: 0;
-        width: 100%;
-        max-width: 100%;
+        /* Hover effect */
+        .conversation:hover {
+            background: #f5f5f5;
+        }
+
+        /* Unread messages - making them stand out */
+        .conversation.unread {
+            font-weight: bold;
+            background-color: #e8f3ff !important; /* Subtle blue background */
+            border-left: 4px solid #007bff; /* Blue highlight */
+        }
+
+    /* Header (Name + Timestamp) */
+    .conversation-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-}
 
-/* Scrollable conversation list */
-.conversation-list {
-    flex-grow: 1;
-    overflow-y: auto;
-}
+    /* Conversation name */
+    .conversation h4 {
+        font-size: 14px;
+        margin: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: black;
+    }
 
-/* Individual conversation items */
-.conversation {
-    display: flex;
-    flex-direction: column;
-    padding: 12px;
-    border-bottom: 1px solid #eee;
-    transition: background-color 0.2s, box-shadow 0.2s;
-    position: relative;
-    text-decoration: none;
-    color: inherit;
-}
+    /* Last message preview */
+    .conversation p {
+        font-size: 12px;
+        margin: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: #666;
+    }
 
-/* Hover effect */
-.conversation:hover {
-    background: #f5f5f5;
-}
-
-/* Unread messages - making them stand out */
-.conversation.unread {
-    font-weight: bold;
-    background-color: #e8f3ff !important; /* Subtle blue background */
-    border-left: 4px solid #007bff; /* Blue highlight */
-}
-
-/* Header (Name + Timestamp) */
-.conversation-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-/* Conversation name */
-.conversation h4 {
-    font-size: 14px;
-    margin: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: black;
-}
-
-/* Last message preview */
-.conversation p {
-    font-size: 12px;
-    margin: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: #666;
-}
-
-/* Timestamp */
-.conversation .timestamp {
-    font-size: 12px;
-    color: #888;
-}
+    /* Timestamp */
+    .conversation .timestamp {
+        font-size: 12px;
+        color: #888;
+    }
     /* Notification Badge - properly positioned */
     .badge-unread {
         background: red;
@@ -123,26 +123,120 @@
         align-self: flex-start; /* Ensures it doesn't stretch */
     }
 
-/* Ensure badge only appears when unread messages exist */
-.conversation.unread .badge-unread {
-    display: inline-block;
-}
+    /* Ensure badge only appears when unread messages exist */
+    .conversation.unread .badge-unread {
+        display: inline-block;
+    }
 
-.conversation:not(.unread) .badge-unread {
-    display: none;
-}
+    .conversation:not(.unread) .badge-unread {
+        display: none;
+    }
+
+    /* New: Widget icon for mobile */
+    .conversation-widget {
+        display: none;
+        position: fixed;
+        top: 125px;
+        left: 20px;
+        width: 40px;
+        height: 40px;
+        background-color: #007bff;
+        color: white;
+        border-radius: 50%;
+        justify-content: center;
+        align-items: center;
+        z-index: 1001;
+        cursor: pointer;
+    }
+
+    /*Minimize button in conversation list header */
+    .minimize-btn {
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    /* Using JS instead */
+   /*  @@media (max-width: 750px) {
+        .conversation-list-container {
+            display: none;
+        }
+
+        .conversation-widget {
+            display: flex;
+        }
+    }
+
+    .hidden {
+        display: none !important;
+    } */
 
 </style>
 
-<div class="conversation-list-container">
-    <h4>Your Conversations</h4>
+<!-- New: Widget icon for mobile -->
+<div id="conversationWidget" class="conversation-widget">
+    <i class="fas fa-list"></i>
+</div>
+
+<!-- Conversation list container -->
+<div id="conversationListContainer" class="conversation-list-container">
+    <div class="conversation-list-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h4>Your Conversations</h4>
+        <!-- New: Minimize button -->
+        <button id="minimizeConvoList" class="minimize-btn"><i class="fas fa-times"></i></button>
+    </div>
     <div id="conversationList" class="conversation-list">
         <p>Loading conversations...</p>
     </div>
 </div>
 
 <script>
-    // Get the current conversationId from the view
+    // Show/hide conversation list on mobile
+    function showConvoList() {
+        document.getElementById("conversationListContainer").style.display = "block";
+        document.getElementById("conversationWidget").style.display = "none";
+    }
+    function hideConvoList() {
+        document.getElementById("conversationListContainer").style.display = "none";
+        document.getElementById("conversationWidget").style.display = "flex";
+    }
+
+    // Widget icon
+    document.getElementById("conversationWidget").addEventListener("click", function () {
+        showConvoList();
+    });
+
+    //minimize button
+    document.getElementById("minimizeConvoList").addEventListener("click", function () {
+        hideConvoList();
+    });
+
+    function adjustConvoDisplay() {
+        if (window.innerWidth <= 750) {
+            hideConvoList();
+        } else {
+            document.getElementById("conversationListContainer").style.display = "";
+            document.getElementById("conversationWidget").style.display = "";
+        }
+    }
+    //This is so you cant minimize the window a larger screens
+    function adjustBackButton() {
+        if (window.innerWidth > 750) {
+            document.getElementById("minimizeConvoList").style.display = "none";
+        } else {
+            document.getElementById("minimizeConvoList").style.display = "block";
+        }
+    }
+
+    // Call on page load and on resize
+    window.addEventListener("resize", adjustBackButton);
+    adjustBackButton();
+
+
+    window.addEventListener("resize", adjustConvoDisplay);
+    adjustConvoDisplay();
+
     var currentConversationId = '@(ViewBag.ConversationId ?? 0)';
 
     // Fetch recent conversations
@@ -167,43 +261,32 @@
     function renderConversations(conversations) {
         const conversationList = document.getElementById("conversationList");
         conversationList.innerHTML = ""; // Clear previous content
-
         if (conversations.length === 0) {
             conversationList.innerHTML = "<p>No active conversations</p>";
             return;
         }
-
         conversations.forEach(conversation => {
-            // If this conversation is the current one, force its unread count to 0.
             if (conversation.conversationId == currentConversationId) {
                 conversation.missedCount = 0;
             }
-
             const date = new Date(conversation.lastMessageTimestamp);
             const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
-            // Prepare red badge if there are missed messages.
             var badge = "";
             if (conversation.missedCount > 0) {
                 badge = `<span class="badge bg-danger">${conversation.missedCount}</span>`;
             }
-
-            // Bold the last message if there are missed messages
             var messageText = conversation.missedCount > 0 ? `<b>${conversation.lastMessage}</b>` : conversation.lastMessage;
-
-            // Unread class if there are missed messages
             var unreadClass = conversation.missedCount > 0 ? " unread" : "";
-
             var conversationHtml = `
-                <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}&conversationId=${conversation.conversationId}" class="conversation ${unreadClass}">
-                    <div class="conversation-header">
-                        <h4>${conversation.student.name}</h4>
-                        <span class="timestamp">${time}</span>
-                    </div>
-                    <p>${messageText}</p>
-                    <div class="badge-container">${badge}</div>
-                </a>
-            `;
+                    <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}&conversationId=${conversation.conversationId}" class="conversation ${unreadClass}">
+                        <div class="conversation-header">
+                            <h4>${conversation.student.name}</h4>
+                            <span class="timestamp">${time}</span>
+                        </div>
+                        <p>${messageText}</p>
+                        <div class="badge-container">${badge}</div>
+                    </a>
+                `;
             conversationList.innerHTML += conversationHtml;
         });
     }
@@ -215,7 +298,6 @@
 
     // Initial load of conversations.
     updateConversations();
-
-    // Refresh conversation list every 30 seconds.
-    setInterval(updateConversations, 30000);
+    // Refresh conversation list every 10 seconds.
+    setInterval(updateConversations, 10000);
 </script>
