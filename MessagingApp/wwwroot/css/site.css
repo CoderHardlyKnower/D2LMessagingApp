@@ -250,7 +250,7 @@ h1 {
     }
 
 
-/* Messaging Page */
+/* ==================Messaging Page====================== */
 .message-container {
     max-width: 600px;
     margin: 20px auto;
@@ -309,6 +309,29 @@ h1 {
         display: block;
     }
 }
+
+.message-textarea {
+    width: 100%;
+    min-height: 40px;
+    max-height: 150px;
+    height: auto;
+    padding: 10px;
+    font-size: 14px;
+    border: 2px solid #ccc; 
+    border-radius: 5px;
+    line-height: 1.5;
+    font-family: inherit;
+    resize: none;
+    overflow-y: hidden; 
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s;
+}
+
+      /* focused border*/
+      .message-textarea:focus {
+       outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 4px rgba(0, 123, 255, 0.4);
+    }
 
 
 .message-list {

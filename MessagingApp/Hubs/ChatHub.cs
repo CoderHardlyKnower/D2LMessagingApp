@@ -54,9 +54,10 @@ namespace MessagingApp.Hubs
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, "conversation_" + conversationId);
         }
 
-        // NEW: Mark messages as read
+        // Mark messages as read
         public async Task MarkMessagesAsRead(int userId, int conversationId)
         {
+            // Mark all unread messages from the other user as read.
             var messages = _context.Messages
                 .Where(m => m.ConversationId == conversationId && m.SenderId != userId && !m.IsRead)
                 .ToList();
@@ -64,14 +65,24 @@ namespace MessagingApp.Hubs
             if (messages.Any())
             {
                 messages.ForEach(m => m.IsRead = true);
-                await _context.SaveChangesAsync();
+            }
+
+            // Update the participant's LastRead so that GetRecentConversations shows no unread messages.
+            var participant = _context.ConversationParticipants
+                .FirstOrDefault(p => p.ConversationId == conversationId && p.UserId == userId);
+
+            if (participant != null)
+            {
+                participant.LastRead = DateTime.Now;
+            }
+
+            await _context.SaveChangesAsync();
 
                 // Notify UI updates
-                await Clients.All.SendAsync("UpdateConversations");
-            }
+            await Clients.All.SendAsync("UpdateConversations");
         }
 
-        // NEW: Handle typing indicators
+        // Handle typing indicators
         public async Task TypingIndicator(int conversationId, int userId, bool isTyping)
         {
             await Clients.Group("conversation_" + conversationId)
