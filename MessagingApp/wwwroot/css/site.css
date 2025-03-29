@@ -250,7 +250,7 @@ h1 {
     }
 
 
-/* Messaging Page */
+/* ==================Messaging Page====================== */
 .message-container {
     max-width: 600px;
     margin: 20px auto;
@@ -309,6 +309,29 @@ h1 {
         display: block;
     }
 }
+
+.message-textarea {
+    width: 100%;
+    min-height: 43px;
+    max-height: 150px;
+    height: 43px;
+    padding: 10px;
+    font-size: 14px;
+    border: 2px solid #ccc; 
+    border-radius: 5px;
+    line-height: 1.5;
+    font-family: inherit;
+    resize: none;
+    overflow-y: hidden; 
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s;
+}
+
+      /* focused border*/
+      .message-textarea:focus {
+       outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 4px rgba(0, 123, 255, 0.4);
+    }
 
 
 .message-list {
@@ -552,58 +575,73 @@ h1 {
     color: #fff;
 }
 
+/*=============Login Page==================*/
 
-/* Login Page Styles */
-.login-container {
+/* Container */
+.login-view-container {
     max-width: 400px;
-    margin: 50px auto;
-    padding: 30px;
+    width: 90%;
     background-color: #fff;
-    border-radius: 5px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 30px 25px;
+    border-radius: 10px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
-    .login-container h2 {
+    /* Title */
+    .login-view-container h2 {
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
+        font-size: 28px;
     }
 
-    .login-container .form-group {
-        margin-bottom: 15px;
+/* Form Group */
+.login-form-group {
+    margin-bottom: 20px;
+}
+
+/* Label */
+.login-view-container label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Input */
+.login-form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+/* Submit Button */
+.login-btn-primary {
+    width: 100%;
+    padding: 12px;
+    background-color: #007bff;
+    border: none;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+    .login-btn-primary:hover {
+        background-color: #0056b3;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 91, 187, 0.2);
     }
 
-    .login-container label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-    }
 
-    .login-container .form-control {
-        width: 100%;
-        padding: 8px 12px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-
-    .login-container .btn-primary {
-        width: 100%;
-        padding: 10px;
-        background-color: #007bff;
-        border: none;
-        color: #fff;
-        border-radius: 4px;
-        font-size: 16px;
-        cursor: pointer;
-        margin-top: 10px;
-    }
-
-        .login-container .btn-primary:hover {
-            background-color: #0056b3;
-        }
-
-    .login-container .validation-summary {
-        margin-top: 10px;
-        color: #dc3545;
-        font-size: 14px;
-    }
-
+/* Validation Message */
+.login-validation-summary {
+    margin-top: 15px;
+    color: #dc3545;
+    font-size: 14px;
+    text-align: center;
+}

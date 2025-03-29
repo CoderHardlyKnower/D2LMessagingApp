@@ -10,24 +10,37 @@
     <title>@ViewData["Title"] - MessagingApp</title>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        background-color: #f4f4f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: Arial, sans-serif;
+        transform: translateY(-60px); 
+    }
+</style>
 <body>
-    <div class="login-container">
+    <div class="login-view-container">
         <h2>Login</h2>
         <form asp-action="Login" method="post">
             @Html.AntiForgeryToken()
-            <div class="form-group">
+            <div class="login-form-group">
                 <label for="email">Email:</label>
-                <input type="email" class="form-control" id="email" name="email" required />
+                <input type="email" class="login-form-control" id="email" name="email" required />
             </div>
-            <div class="form-group">
+            <div class="login-form-group">
                 <label for="password">Password:</label>
-                <input type="password" class="form-control" id="password" name="password" required />
+                <input type="password" class="login-form-control" id="password" name="password" required />
             </div>
-            <button type="submit" class="btn btn-primary">Login</button>
+            <button type="submit" class="login-btn-primary">Login</button>
         </form>
         @if (!ViewData.ModelState.IsValid)
         {
-            <div class="validation-summary">
+            <div class="login-validation-summary">
                 @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
                 {
                     <p>@error.ErrorMessage</p>

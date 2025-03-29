@@ -16,9 +16,9 @@
         transition: background-color 0.3s ease;
     }
 
-        .chat-widget:hover {
-            background-color: #a9a9a9;
-        }
+    .chat-widget:hover {
+        background-color: #a9a9a9;
+    }
 
     .chat-img {
         object-fit: contain;
@@ -39,7 +39,9 @@
     .chat-window {
         display: none;
         width: 400px;
-        height: 400px;
+        max-width: 95vw;
+        height: auto;
+        max-height: 400px;
         background-color: white;
         position: absolute;
         bottom: 40px;
@@ -47,6 +49,7 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         border-radius: 15px;
         z-index: 100;
+        overflow: hidden;
     }
 
     .chat-window-header {
@@ -62,9 +65,9 @@
         align-items: center;
     }
 
-        .icons > * {
-            cursor: pointer;
-        }
+    .icons > * {
+        cursor: pointer;
+    }
 
     .conversation {
         background-color: white;
@@ -74,21 +77,37 @@
         border-bottom: 1px solid black;
     }
 
-        .conversation:hover {
-            background-color: #d3d3d3;
-            color: black;
-        }
+    .conversation:hover {
+        background-color: #d3d3d3;
+        color: black;
+    }
 
-        .conversation p {
-            max-width: 380px;
-            max-height: 50px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+    .conversation p {
+        max-width: 380px;
+        max-height: 50px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .active-chats {
+        max-height: 260px; 
+        overflow-y: auto;
+    }
 
     a {
         text-decoration: none;
         color: black;
+    }
+
+    @@media (max-width: 500px) {
+        .chat-window {
+            width: 90vw;
+            right: 5vw;
+        }
+
+        .conversation p {
+            max-width: 100%;
+        }
     }
 </style>
 

@@ -72,7 +72,7 @@
                     <input type="hidden" name="studentId" value="@ViewBag.StudentId" />
                     <input type="hidden" name="studentName" value="@studentName" />
                     <input type="hidden" name="conversationId" value="@conversationId" />
-                    <input type="text" name="content" id="contentInput" placeholder="Type your message here..." required />
+                    <textarea name="content" id="contentInput" class="message-textarea" placeholder="Type your message here..." required></textarea>
                     <button type="submit" class="send-btn">
                         <i class="fas fa-paper-plane"></i>
                     </button>
@@ -116,37 +116,43 @@
         /// Handles receiving new message
         /// Appends the message to the message list
         /// </summary>
-        connection.on("ReceiveMessage", (senderId, senderName, message, timestamp, messageId) => {
-            const messageList = document.getElementById("messageList");
-            const noMsg = messageList.querySelector("p");
-            if (noMsg && noMsg.innerText.trim() === "No messages available.") {
-                noMsg.remove();
-            }
+                connection.on("ReceiveMessage", (senderId, senderName, message, timestamp, messageId) => {
+                    const messageList = document.getElementById("messageList");
+                    const noMsg = messageList.querySelector("p");
+                    if (noMsg && noMsg.innerText.trim() === "No messages available.") {
+                        noMsg.remove();
+                    }
 
-            const isSentByUser = senderId == @loggedInUserId;
-            const wrapper = document.createElement("div");
-            wrapper.className = "message-wrapper " + (isSentByUser ? "sent" : "received");
-            wrapper.setAttribute("data-message-id", messageId);
+                    const isSentByUser = senderId == @loggedInUserId;
+                    const wrapper = document.createElement("div");
+                    wrapper.className = "message-wrapper " + (isSentByUser ? "sent" : "received");
+                    wrapper.setAttribute("data-message-id", messageId);
 
-            let headerHtml = `<div class="message-header">
-                                    <small class="message-info">${senderName} - ${timestamp}</small>`;
-            if (isSentByUser) {
-                headerHtml += `<div class="message-actions">
-                                    <i class="fas fa-edit edit-icon" title="Edit"></i>
-                                    <i class="fas fa-trash delete-icon" title="Delete"></i>
-                                </div>`;
-            }
-            headerHtml += `</div>`;
-            wrapper.innerHTML = headerHtml +
-                `<div class="message ${isSentByUser ? "sent-message" : "received-message"}">${message}</div>`;
+                    let headerHtml = `<div class="message-header">
+                                                <small class="message-info">${senderName} - ${timestamp}</small>`;
+                    if (isSentByUser) {
+                        headerHtml += `<div class="message-actions">
+                                                <i class="fas fa-edit edit-icon" title="Edit"></i>
+                                                <i class="fas fa-trash delete-icon" title="Delete"></i>
+                                           </div>`;
+                    }
+                    headerHtml += `</div>`;
+                    wrapper.innerHTML = headerHtml +
+                        `<div class="message ${isSentByUser ? "sent-message" : "received-message"}">${message}</div>`;
 
-            // Instead of appending, insert the new message at the beginning of the container.
-            messageList.insertBefore(wrapper, messageList.firstChild);
+                    // Instead of appending, insert the new message at the beginning of the container.
+                    messageList.insertBefore(wrapper, messageList.firstChild);
             // Use a short delay to ensure layout is updated, then reset scrollTop to 0.
-            setTimeout(() => {
-                messageList.scrollTop = 0;
-            }, 10);
-        });
+                    setTimeout(() => {
+                        messageList.scrollTop = 0;
+                    }, 10);
+
+                    // If the message comes from other user in chat, mark it as read
+                    if (!isSentByUser) {
+                        connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
+                            .catch(err => console.error(err.toString()));
+                    }
+                });
 
 
         /// <summary>
@@ -163,6 +169,16 @@
                 .catch(err => console.error(err.toString()));
             contentInput.value = "";
         });
+
+                //refresh the conversation list.
+                connection.on("UpdateConversations", () => {
+                    if (typeof updateConversations === "function") {
+                        updateConversations();
+                    } else {
+                        console.log("updateConversations function not found.");
+                    }
+                });
+
 
         // Helper: Cancel any active edit inputs.
         function cancelActiveEdits() {
@@ -314,6 +330,21 @@
         });
     });
 });
+
+                const textarea = document.getElementById("contentInput");
+
+                textarea.addEventListener("input", function () {
+                    this.style.height = "auto";
+                    this.style.height = this.scrollHeight + "px";
+
+                    // This makes scrool bar only appear after 5 lines (roughly 5 * line-height)
+                    const lineHeight = parseFloat(getComputedStyle(this).lineHeight);
+                    if (this.scrollHeight > lineHeight * 5) {
+                        this.style.overflowY = "auto";
+                    } else {
+                        this.style.overflowY = "hidden";
+                    }
+                });
  </script>
  </body>
 </html>
