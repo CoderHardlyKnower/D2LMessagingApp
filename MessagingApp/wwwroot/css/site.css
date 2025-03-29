@@ -312,9 +312,9 @@ h1 {
 
 .message-textarea {
     width: 100%;
-    min-height: 40px;
+    min-height: 43px;
     max-height: 150px;
-    height: auto;
+    height: 43px;
     padding: 10px;
     font-size: 14px;
     border: 2px solid #ccc; 
