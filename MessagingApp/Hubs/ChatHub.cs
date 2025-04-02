@@ -20,6 +20,16 @@ namespace MessagingApp.Hubs
             _context = context;
         }
 
+        public override async Task OnConnectedAsync()
+        {
+            var userId = Context.User?.FindFirst("UserId")?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, "user_" + userId);
+            }
+            await base.OnConnectedAsync();
+        }
+
         public async Task SendMessage(int senderId, string senderName, string message, int conversationId)
         {
             var newMessage = new Message
@@ -78,7 +88,17 @@ namespace MessagingApp.Hubs
 
             await _context.SaveChangesAsync();
 
-                // Notify UI updates
+            // For each message marked as read, notify the sender’s personal group with a read receipt.
+            if (messages.Any())
+            {
+                foreach (var m in messages)
+                {
+                    await Clients.Group("user_" + m.SenderId)
+                        .SendAsync("MessageRead", m.Id, DateTime.Now.ToShortTimeString());
+                }
+            }
+
+            // Notify UI updates
             await Clients.All.SendAsync("UpdateConversations");
         }
 
