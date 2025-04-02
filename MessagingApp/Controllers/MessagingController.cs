@@ -132,30 +132,32 @@ namespace MessagingApp.Controllers
         public async Task<IActionResult> GetRecentConversations(int excludeConversationId = 0)
         {
             int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
-
             // Get recent conversations and optionally filter out the current one.
-            var conversations = await _context.Conversations
-                .Where(c => c.Participants.Any(p => p.UserId == loggedInUserId) && c.Messages.Any())
-                .Where(c => excludeConversationId == 0 || c.ConversationId != excludeConversationId)
-                .Select(c => new
+
+            var conversations = await (
+                from c in _context.Conversations
+                where c.Participants.Any(p => p.UserId == loggedInUserId) && c.Messages.Any()
+                where excludeConversationId == 0 || c.ConversationId != excludeConversationId
+                let lastMsg = c.Messages.OrderByDescending(m => m.Timestamp).FirstOrDefault()
+                select new
                 {
                     c.ConversationId,
-                    LastMessage = c.Messages.OrderByDescending(m => m.Timestamp).FirstOrDefault().Content,
-                    LastMessageTimestamp = c.Messages.OrderByDescending(m => m.Timestamp).FirstOrDefault().Timestamp,
-                    // Only count messages not sent by the logged in user that are newer than LastRead
+                    LastMessage = lastMsg.Content,
+                    LastMessageTimestamp = lastMsg.Timestamp,
+                    LastMessageSenderId = lastMsg.SenderId,  
                     missedCount = c.Messages.Count(m =>
                         m.Timestamp > c.Participants.FirstOrDefault(p => p.UserId == loggedInUserId).LastRead
                         && m.SenderId != loggedInUserId),
                     Student = c.Participants
-                        .Where(p => p.UserId != loggedInUserId)
-                        .Select(p => new {
-                            p.User.UserId,
-                            p.User.Name
-                        })
-                        .FirstOrDefault()
-                })
-                .OrderByDescending(c => c.LastMessageTimestamp)
-                .ToListAsync();
+                                .Where(p => p.UserId != loggedInUserId)
+                                .Select(p => new {
+                                    p.User.UserId,
+                                    p.User.Name
+                                })
+                                .FirstOrDefault()
+                }
+            ).OrderByDescending(c => c.LastMessageTimestamp)
+             .ToListAsync();
 
             return Json(conversations);
         }

@@ -275,7 +275,14 @@
             if (conversation.missedCount > 0) {
                 badge = `<span class="badge bg-danger">${conversation.missedCount}</span>`;
             }
-            var messageText = conversation.missedCount > 0 ? `<b>${conversation.lastMessage}</b>` : conversation.lastMessage;
+            // If the last message sender is the curent user, show "You: message",
+            // Otherwise show "StudentName: message"
+            var previewText = "";
+            if (conversation.lastMessageSenderId == window.loggedInUserId) {
+                previewText = "You: " + conversation.lastMessage;
+            } else {
+                previewText = conversation.student.name + ": " + conversation.lastMessage;
+            }
             var unreadClass = conversation.missedCount > 0 ? " unread" : "";
             var conversationHtml = `
                     <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}&conversationId=${conversation.conversationId}" class="conversation ${unreadClass}">
@@ -283,7 +290,7 @@
                             <h4>${conversation.student.name}</h4>
                             <span class="timestamp">${time}</span>
                         </div>
-                        <p>${messageText}</p>
+                        <p>${previewText}</p>
                         <div class="badge-container">${badge}</div>
                     </a>
                 `;
