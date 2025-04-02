@@ -9,7 +9,8 @@
         public DateTime CreatedTimestamp { get; set; } = DateTime.Now; // Timestamp only for NEW messages
         public bool IsRead { get; set; } = false;  // Default: Unread
         public bool IsDeleted { get; set; } = false; // Default: Not Deleted
-        public bool IsTyping { get; set; } = false; // Future Typing Indicator
+        public bool IsTyping { get; set; } = false;
+        public DateTime? ReadTime { get; set; }
 
 
         // Link to the conversation.

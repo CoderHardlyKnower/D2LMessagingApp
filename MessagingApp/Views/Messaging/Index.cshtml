@@ -35,6 +35,14 @@
             <div class="message-container">
                 <h2 class="message-header-title">Messaging with @studentName</h2>
                 <div class="message-list" id="messageList">
+                    @* Calculate the most recent read message from the sender *@
+                    @{
+                        var lastReadMessageId = Model
+                        .Where(m => m.SenderId == loggedInUserId && m.IsRead && m.ReadTime.HasValue)
+                        .OrderByDescending(m => m.CreatedTimestamp)
+                        .Select(m => m.Id)
+                        .FirstOrDefault();
+                    }
                     @if (Model != null && Model.Any())
                     {
                         foreach (var message in Model.Reverse())
@@ -58,6 +66,11 @@
                                 <div class="message @(isSentByUser ? "sent-message" : "received-message")">
                                     @message.Content
                                 </div>
+                                @* Only render the read receipt for the most recent read sent message *@
+                                @if (isSentByUser && message.IsRead && message.ReadTime.HasValue && message.Id == lastReadMessageId)
+                                {
+                                    <div class="read-receipt">Read @message.ReadTime.Value.ToShortTimeString()</div>
+                                }
                             </div>
                         }
                     }
