@@ -309,6 +309,12 @@ h1 {
         display: block;
     }
 }
+@media (max-width: 600px) {
+    .message-container {
+        margin-top: 50px;
+    }
+}
+
 
 .message-textarea {
     width: 100%;
