@@ -20,6 +20,16 @@ namespace MessagingApp.Hubs
             _context = context;
         }
 
+        public override async Task OnConnectedAsync()
+        {
+            var userId = Context.User?.FindFirst("UserId")?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, "user_" + userId);
+            }
+            await base.OnConnectedAsync();
+        }
+
         public async Task SendMessage(int senderId, string senderName, string message, int conversationId)
         {
             var newMessage = new Message
@@ -55,6 +65,7 @@ namespace MessagingApp.Hubs
         }
 
         // Mark messages as read
+        // Mark messages as read
         public async Task MarkMessagesAsRead(int userId, int conversationId)
         {
             // Mark all unread messages from the other user as read.
@@ -64,21 +75,31 @@ namespace MessagingApp.Hubs
 
             if (messages.Any())
             {
-                messages.ForEach(m => m.IsRead = true);
+                foreach (var m in messages)
+                {
+                    m.IsRead = true;
+                    m.ReadTime = DateTime.Now;  // Set the read timestamp
+                }
             }
 
             // Update the participant's LastRead so that GetRecentConversations shows no unread messages.
             var participant = _context.ConversationParticipants
                 .FirstOrDefault(p => p.ConversationId == conversationId && p.UserId == userId);
-
             if (participant != null)
             {
                 participant.LastRead = DateTime.Now;
             }
-
             await _context.SaveChangesAsync();
 
-                // Notify UI updates
+            // For the latest message marked as read, notify the sender’s personal group with a read receipt.
+            if (messages.Any())
+            {
+                var latest = messages.OrderByDescending(m => m.CreatedTimestamp).First();
+                await Clients.Group("user_" + latest.SenderId)
+                    .SendAsync("MessageRead", latest.Id, latest.ReadTime?.ToShortTimeString());
+            }
+
+            // Notify UI updates
             await Clients.All.SendAsync("UpdateConversations");
         }
 

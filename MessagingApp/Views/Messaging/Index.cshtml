@@ -19,7 +19,6 @@
             This view renders the messaging interface and handles client-side operations such as
             sending, editing, and deleting messages via SignalR.
         -->
-
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -35,6 +34,14 @@
             <div class="message-container">
                 <h2 class="message-header-title">Messaging with @studentName</h2>
                 <div class="message-list" id="messageList">
+                    @* Calculate the IDs for the persistent indicator *@
+                    @{
+                        var lastSentMessageId = Model
+                        .Where(m => m.SenderId == loggedInUserId)
+                        .OrderByDescending(m => m.CreatedTimestamp)
+                        .Select(m => m.Id)
+                        .FirstOrDefault();
+                    }
                     @if (Model != null && Model.Any())
                     {
                         foreach (var message in Model.Reverse())
@@ -58,6 +65,19 @@
                                 <div class="message @(isSentByUser ? "sent-message" : "received-message")">
                                     @message.Content
                                 </div>
+                                @* For sent messages, always render the persistent sent icon on the last sent message.
+                        Additionally, if that message is read, render the read receipt below it.
+                        *@
+                                @if (isSentByUser && message.Id == lastSentMessageId)
+                                {
+                                    <div class="message-checkmark">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    @if (message.IsRead && message.ReadTime.HasValue)
+                                    {
+                                        <div class="read-receipt">Read @message.ReadTime.Value.ToShortTimeString()</div>
+                                    }
+                                }
                             </div>
                         }
                     }
@@ -76,7 +96,6 @@
                     <button type="submit" class="send-btn">
                         <i class="fas fa-paper-plane"></i>
                     </button>
-
                 </form>
             </div>
 
@@ -91,31 +110,34 @@
             </div>
 
 
-    <script>
-        //Global variable to store the message ID pending deletion
-        let pendingDeleteMessageId = null;
+            <script>
+                window.loggedInUserId = @loggedInUserId;
+                //Global variable to store the message ID pending deletion
+                let pendingDeleteMessageId = null;
 
-        window.onload = function () {
-            var messageList = document.getElementById("messageList");
-            messageList.scrollTop = 0;
-        };
+                window.onload = function () {
+                    var messageList = document.getElementById("messageList");
+                    messageList.scrollTop = 0;
+                };
 
-        // Initialize SignalR connection.
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/chatHub")
-            .build();
+                // Initialize SignalR connection.
+                const connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/chatHub")
+                    .build();
 
-        connection.start().then(() => {
-            console.log("Connected to SignalR hub.");
-            // Join the conversation group (using the conversationId from  the page
-            connection.invoke("JoinConversation", @conversationId)
-                .catch(err => console.error(err.toString()));
-        }).catch(err => console.error("SignalR Connection Error: ", err.toString()));
+                connection.start().then(() => {
+                    console.log("Connected to SignalR hub.");
+                    // Join the conversation group (using the conversationId from  the page
+                    connection.invoke("JoinConversation", @conversationId)
+                        .catch(err => console.error(err.toString()));
+                    connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
+                        .catch(err => console.error(err.toString()));
+                }).catch(err => console.error("SignalR Connection Error: ", err.toString()));
 
-        /// <summary>
-        /// Handles receiving new message
-        /// Appends the message to the message list
-        /// </summary>
+                /// <summary>
+                /// Handles receiving new message
+                /// Appends the message to the message list
+                /// </summary>
                 connection.on("ReceiveMessage", (senderId, senderName, message, timestamp, messageId) => {
                     const messageList = document.getElementById("messageList");
                     const noMsg = messageList.querySelector("p");
@@ -129,12 +151,12 @@
                     wrapper.setAttribute("data-message-id", messageId);
 
                     let headerHtml = `<div class="message-header">
-                                                <small class="message-info">${senderName} - ${timestamp}</small>`;
+                                                                <small class="message-info">${senderName} - ${timestamp}</small>`;
                     if (isSentByUser) {
                         headerHtml += `<div class="message-actions">
-                                                <i class="fas fa-edit edit-icon" title="Edit"></i>
-                                                <i class="fas fa-trash delete-icon" title="Delete"></i>
-                                           </div>`;
+                                                                <i class="fas fa-edit edit-icon" title="Edit"></i>
+                                                                <i class="fas fa-trash delete-icon" title="Delete"></i>
+                                                           </div>`;
                     }
                     headerHtml += `</div>`;
                     wrapper.innerHTML = headerHtml +
@@ -142,7 +164,7 @@
 
                     // Instead of appending, insert the new message at the beginning of the container.
                     messageList.insertBefore(wrapper, messageList.firstChild);
-            // Use a short delay to ensure layout is updated, then reset scrollTop to 0.
+                    // Use a short delay to ensure layout is updated, then reset scrollTop to 0.
                     setTimeout(() => {
                         messageList.scrollTop = 0;
                     }, 10);
@@ -151,24 +173,34 @@
                     if (!isSentByUser) {
                         connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
                             .catch(err => console.error(err.toString()));
+                    } else {
+                        document.querySelectorAll(".message-checkmark").forEach(el => el.remove());
+                        const checkmark = document.createElement("div");
+                        checkmark.className = "message-checkmark";
+                        checkmark.innerHTML = '<i class="fas fa-check-circle"></i>';
+                        const sentMessageDiv = wrapper.querySelector(".sent-message");
+                        if (sentMessageDiv) {
+                            sentMessageDiv.parentNode.insertBefore(checkmark, sentMessageDiv.nextSibling);
+                        }
+
                     }
                 });
 
 
-        /// <summary>
-        /// Intercepts the message form submission to send a new message via SignalR
-        /// Prevents the default form behavior, sends the message, and clears the input field
-        /// </summary>
-        document.getElementById("messageForm").addEventListener("submit", function (event) {
-            event.preventDefault();
-            cancelActiveEdits();
-            const contentInput = document.getElementById("contentInput");
-            if (contentInput.value.trim() === "") return;
-            const convId = parseInt(document.querySelector('input[name="conversationId"]').value, 10);
-            connection.invoke("SendMessage", @loggedInUserId, "@loggedInUserName", contentInput.value, convId)
-                .catch(err => console.error(err.toString()));
-            contentInput.value = "";
-        });
+                /// <summary>
+                /// Intercepts the message form submission to send a new message via SignalR
+                /// Prevents the default form behavior, sends the message, and clears the input field
+                /// </summary>
+                document.getElementById("messageForm").addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    cancelActiveEdits();
+                    const contentInput = document.getElementById("contentInput");
+                    if (contentInput.value.trim() === "") return;
+                    const convId = parseInt(document.querySelector('input[name="conversationId"]').value, 10);
+                    connection.invoke("SendMessage", @loggedInUserId, "@loggedInUserName", contentInput.value, convId)
+                        .catch(err => console.error(err.toString()));
+                    contentInput.value = "";
+                });
 
                 //refresh the conversation list.
                 connection.on("UpdateConversations", () => {
@@ -180,156 +212,175 @@
                 });
 
 
-        // Helper: Cancel any active edit inputs.
-        function cancelActiveEdits() {
-            const activeInputs = document.querySelectorAll(".message-wrapper input[type='text']");
-            activeInputs.forEach(input => {
-                const parentDiv = input.parentElement;
-                if (parentDiv.dataset.originalText) {
-                    parentDiv.innerText = parentDiv.dataset.originalText;
-                } else {
-                    parentDiv.innerText = input.value;
+                // Helper: Cancel any active edit inputs.
+                function cancelActiveEdits() {
+                    const activeInputs = document.querySelectorAll(".message-wrapper input[type='text']");
+                    activeInputs.forEach(input => {
+                        const parentDiv = input.parentElement;
+                        if (parentDiv.dataset.originalText) {
+                            parentDiv.innerText = parentDiv.dataset.originalText;
+                        } else {
+                            parentDiv.innerText = input.value;
+                        }
+                    });
                 }
-            });
-        }
-        /// <summary>
-        /// Delegates the click events on the message list for editing or deleting messages
-        /// Opens the deletion confirmation modal or transforms the message into an inline editor.
-        /// </summary>
-        document.getElementById("messageList").addEventListener("click", function (event) {
-            const target = event.target;
-            const wrapper = target.closest(".message-wrapper");
-            if (!wrapper) return;
-            const messageId = parseInt(wrapper.getAttribute("data-message-id"), 10);
+                /// <summary>
+                /// Delegates the click events on the message list for editing or deleting messages
+                /// Opens the deletion confirmation modal or transforms the message into an inline editor.
+                /// </summary>
+                document.getElementById("messageList").addEventListener("click", function (event) {
+                    const target = event.target;
+                    const wrapper = target.closest(".message-wrapper");
+                    if (!wrapper) return;
+                    const messageId = parseInt(wrapper.getAttribute("data-message-id"), 10);
 
-            // Delete action: open the custom modal confirmation.
-            if (target.classList.contains("delete-icon")) {
-                pendingDeleteMessageId = messageId;
-                document.getElementById("confirmModal").style.display = "flex";
-            }
-
-            // Edit action.
-            if (target.classList.contains("edit-icon")) {
-                const messageDiv = wrapper.querySelector(".message");
-                const originalText = messageDiv.innerText;
-                if (messageDiv.querySelector("input")) return;
-                const input = document.createElement("input");
-                input.type = "text";
-                input.value = originalText;
-                input.style.width = "80%";
-                messageDiv.dataset.originalText = originalText;
-                messageDiv.innerHTML = "";
-                messageDiv.appendChild(input);
-                input.focus();
-
-                let editSaved = false;
-                function saveEdit() {
-                    const newContent = input.value.trim();
-                    if (newContent === "" || newContent === originalText) {
-                        cancelEdit();
-                        return;
+                    // Delete action: open the custom modal confirmation.
+                    if (target.classList.contains("delete-icon")) {
+                        pendingDeleteMessageId = messageId;
+                        document.getElementById("confirmModal").style.display = "flex";
                     }
-                    editSaved = true;
-                    input.removeEventListener("blur", onBlur);
-                    connection.invoke("EditMessage", messageId, newContent)
-                        .catch(err => console.error(err.toString()));
-                }
-                function cancelEdit() {
-                    messageDiv.innerText = originalText;
-                }
-                function onBlur() {
-                    setTimeout(() => {
-                        if (!editSaved) cancelEdit();
-                    }, 300);
-                }
-                input.addEventListener("keydown", function (e) {
-                    if (e.key === "Enter") {
-                        e.preventDefault();
-                        saveEdit();
-                        input.blur();
-                    } else if (e.key === "Escape") {
-                        e.preventDefault();
-                        cancelEdit();
+
+                    // Edit action.
+                    if (target.classList.contains("edit-icon")) {
+                        const messageDiv = wrapper.querySelector(".message");
+                        const originalText = messageDiv.innerText;
+                        if (messageDiv.querySelector("input")) return;
+                        const input = document.createElement("input");
+                        input.type = "text";
+                        input.value = originalText;
+                        input.style.width = "80%";
+                        messageDiv.dataset.originalText = originalText;
+                        messageDiv.innerHTML = "";
+                        messageDiv.appendChild(input);
+                        input.focus();
+
+                        let editSaved = false;
+                        function saveEdit() {
+                            const newContent = input.value.trim();
+                            if (newContent === "" || newContent === originalText) {
+                                cancelEdit();
+                                return;
+                            }
+                            editSaved = true;
+                            input.removeEventListener("blur", onBlur);
+                            connection.invoke("EditMessage", messageId, newContent)
+                                .catch(err => console.error(err.toString()));
+                        }
+                        function cancelEdit() {
+                            messageDiv.innerText = originalText;
+                        }
+                        function onBlur() {
+                            setTimeout(() => {
+                                if (!editSaved) cancelEdit();
+                            }, 300);
+                        }
+                        input.addEventListener("keydown", function (e) {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                saveEdit();
+                                input.blur();
+                            } else if (e.key === "Escape") {
+                                e.preventDefault();
+                                cancelEdit();
+                            }
+                        });
+                        input.addEventListener("blur", onBlur);
+                        const saveIcon = document.createElement("i");
+                        saveIcon.className = "fas fa-check";
+                        saveIcon.style.cursor = "pointer";
+                        saveIcon.title = "Save";
+                        const cancelIcon = document.createElement("i");
+                        cancelIcon.className = "fas fa-times";
+                        cancelIcon.style.cursor = "pointer";
+                        cancelIcon.title = "Cancel";
+                        messageDiv.appendChild(saveIcon);
+                        messageDiv.appendChild(cancelIcon);
+                        saveIcon.addEventListener("click", saveEdit);
+                        cancelIcon.addEventListener("click", cancelEdit);
                     }
                 });
-                input.addEventListener("blur", onBlur);
-                const saveIcon = document.createElement("i");
-                saveIcon.className = "fas fa-check";
-                saveIcon.style.cursor = "pointer";
-                saveIcon.title = "Save";
-                const cancelIcon = document.createElement("i");
-                cancelIcon.className = "fas fa-times";
-                cancelIcon.style.cursor = "pointer";
-                cancelIcon.title = "Cancel";
-                messageDiv.appendChild(saveIcon);
-                messageDiv.appendChild(cancelIcon);
-                saveIcon.addEventListener("click", saveEdit);
-                cancelIcon.addEventListener("click", cancelEdit);
-            }
-        });
 
-        /// <summary>
-        /// Handles the confirmation of message deletion
-        /// Invokes the DeleteMessage method on the SignalR hub and hides the modal
-        /// </summary>
-        document.getElementById("confirmDeleteBtn").addEventListener("click", function () {
-            if (pendingDeleteMessageId != null) {
-                connection.invoke("DeleteMessage", pendingDeleteMessageId)
-                    .catch(err => console.error(err.toString()));
-                document.getElementById("confirmModal").style.display = "none";
-                pendingDeleteMessageId = null;
-            }
-        });
-        document.getElementById("cancelDeleteBtn").addEventListener("click", function () {
-            document.getElementById("confirmModal").style.display = "none";
-            pendingDeleteMessageId = null;
-        });
+                /// <summary>
+                /// Handles the confirmation of message deletion
+                /// Invokes the DeleteMessage method on the SignalR hub and hides the modal
+                /// </summary>
+                document.getElementById("confirmDeleteBtn").addEventListener("click", function () {
+                    if (pendingDeleteMessageId != null) {
+                        connection.invoke("DeleteMessage", pendingDeleteMessageId)
+                            .catch(err => console.error(err.toString()));
+                        document.getElementById("confirmModal").style.display = "none";
+                        pendingDeleteMessageId = null;
+                    }
+                });
+                document.getElementById("cancelDeleteBtn").addEventListener("click", function () {
+                    document.getElementById("confirmModal").style.display = "none";
+                    pendingDeleteMessageId = null;
+                });
 
-        // Handle MessageEdited event.
-        // Handle MessageEdited event to update the UI (edited marker persists)
-        connection.on("MessageEdited", (messageId, newContent, timestamp) => {
-            const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
-            if (wrapper) {
-                // Update the message content
-                const messageDiv = wrapper.querySelector(".message");
-                messageDiv.innerText = newContent;
-                // Update the header info: extract the sender name from existing info
-                const infoEl = wrapper.querySelector(".message-info");
-                // We assume the infoEl text is in the format "SenderName - oldTimestamp"
-                let parts = infoEl.innerText.split("-");
-                let senderName = parts[0].trim();
-                // Replace header with new timestamp and the persistent (edited) marker
-                infoEl.innerHTML = `${senderName} - ${timestamp} <span class="edited-label">(edited)</span>`;
-            }
-        });
+                connection.on("MessageRead", (messageId, readTime) => {
+                    document.querySelectorAll(".read-receipt").forEach(el => el.remove());
 
-        // Handle MessageDeleted event.
-        connection.on("MessageDeleted", (messageId) => {
-            const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
-            if (wrapper) {
-                const infoEl = wrapper.querySelector(".message-info");
-                let senderName = "User";
-                if (infoEl && infoEl.innerText.indexOf(" - ") !== -1) {
-                    senderName = infoEl.innerText.split(" - ")[0];
-                }
-                wrapper.innerHTML = `<div class="deleted-message">${senderName} deleted a message</div>`;
-            }
-        });
-        //Edit and delete icons on message bubbles Listen for a click even for mobile phones instead of hover
-        document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll(".message-wrapper").forEach(wrapper => {
-        wrapper.addEventListener("click", function (event) {
-            if (event.target.closest(".message-actions")) return;
+                    const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
+                    if (wrapper && wrapper.classList.contains("sent")) {
+                        const sentMessageDiv = wrapper.querySelector(".sent-message");
+                        if (sentMessageDiv) {
+                            const receipt = document.createElement("div");
+                            receipt.className = "read-receipt";
+                            receipt.innerText = `Read ${readTime}`;
+                            sentMessageDiv.parentNode.insertBefore(receipt, sentMessageDiv.nextSibling);
+                        }
+                    }
+                });
 
-            // Close all other open message actions
-            document.querySelectorAll(".message-wrapper.show-actions").forEach(el => {
-                if (el !== this) el.classList.remove("show-actions");
-            });
+                // Handle MessageEdited event.
+                // Handle MessageEdited event to update the UI (edited marker persists)
+                connection.on("MessageEdited", (messageId, newContent, timestamp) => {
+                    const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
+                    if (wrapper) {
+                        // Update the message content
+                        const messageDiv = wrapper.querySelector(".message");
+                        messageDiv.innerText = newContent;
+                        // Update the header info: extract the sender name from existing info
+                        const infoEl = wrapper.querySelector(".message-info");
+                        // We assume the infoEl text is in the format "SenderName - oldTimestamp"
+                        let parts = infoEl.innerText.split("-");
+                        let senderName = parts[0].trim();
+                        // Replace header with new timestamp and the persistent (edited) marker
+                        infoEl.innerHTML = `${senderName} - ${timestamp} <span class="edited-label">(edited)</span>`;
+                    }
+                });
 
-            this.classList.toggle("show-actions");
-        });
-    });
-});
+                // Handle MessageDeleted event.
+                connection.on("MessageDeleted", (messageId) => {
+                    const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
+                    if (wrapper) {
+                        const infoEl = wrapper.querySelector(".message-info");
+                        let senderName = "User";
+                        if (infoEl && infoEl.innerText.indexOf(" - ") !== -1) {
+                            senderName = infoEl.innerText.split(" - ")[0];
+                        }
+                        wrapper.innerHTML = `<div class="deleted-message">${senderName} deleted a message</div>`;
+                    }
+                });
+                //Edit and delete icons on message bubbles Listen for a click even for mobile phones instead of hover
+                document.addEventListener("DOMContentLoaded", function () {
+                    document.querySelectorAll(".message-wrapper").forEach(wrapper => {
+                        wrapper.addEventListener("click", function (event) {
+                            if (event.target.closest(".message-actions")) return;
+
+                            // Close all other open message actions
+                            document.querySelectorAll(".message-wrapper.show-actions").forEach(el => {
+                                if (el !== this) el.classList.remove("show-actions");
+                            });
+
+                            this.classList.toggle("show-actions");
+                        });
+                    });
+                });
+                window.addEventListener("focus", function () {
+                    connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
+                        .catch(err => console.error(err.toString()));
+                });
 
                 const textarea = document.getElementById("contentInput");
 
@@ -339,12 +390,21 @@
 
                     // This makes scrool bar only appear after 5 lines (roughly 5 * line-height)
                     const lineHeight = parseFloat(getComputedStyle(this).lineHeight);
-                    if (this.scrollHeight > lineHeight * 5) {
+                    if (this.scrollHeight > lineHeight * 4) {
                         this.style.overflowY = "auto";
                     } else {
                         this.style.overflowY = "hidden";
                     }
                 });
- </script>
+                document.addEventListener("DOMContentLoaded", function () {
+                    const textarea = document.getElementById("contentInput");
+                    textarea.addEventListener("keydown", function (event) {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            document.getElementById("messageForm").dispatchEvent(new Event("submit", { cancelable: true }));
+                        }
+                    });
+                });
+            </script>
  </body>
 </html>

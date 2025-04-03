@@ -309,6 +309,12 @@ h1 {
         display: block;
     }
 }
+@media (max-width: 600px) {
+    .message-container {
+        margin-top: 50px;
+    }
+}
+
 
 .message-textarea {
     width: 100%;
@@ -424,16 +430,40 @@ h1 {
 /* Sent Messages */
 .sent {
     align-items: flex-end;
+        position: relative;
 }
 
 .sent-message {
-    background-color: #0078D4; 
+    background-color: #0078D4;
     color: white;
     align-self: flex-end;
     text-align: left;
     padding: 10px 14px;
     margin-right: 5px;
     border-radius: 18px;
+    position: relative;
+}
+
+
+    .message-checkmark:hover::after {
+        content: "sent";
+        position: absolute;
+        bottom: -3px; 
+        right: 0;
+        background-color: #333;
+        color: #fff;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.7em;
+        white-space: nowrap;
+        opacity: 0.9;
+    }
+
+/*To fit the sent icon*/
+.sent-message,
+.received-message {
+    padding: 10px 15px;
+    margin: 0 15px;
 }
 
 /* Received Messages */
@@ -458,6 +488,21 @@ h1 {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.read-receipt {
+    font-size: 0.65em;
+    font-weight: bold;
+    color: #333;
+    margin-top: 5px; 
+}
+.message-checkmark {
+    position: absolute;
+    top: 68%;
+    right: 10px;
+    transform: translate(100%, -50%);
+    color: green;
+    font-size: 1em;
 }
 
     /* Input field */
