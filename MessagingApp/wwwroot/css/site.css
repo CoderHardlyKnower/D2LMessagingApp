@@ -437,13 +437,7 @@ h1 {
     border-radius: 18px;
     position: relative;
 }
-.message-checkmark {
-    position: absolute;
-    bottom: -5px;
-    right: -20px; 
-    color: green;
-    font-size: 1em;
-}
+
 
     .message-checkmark:hover::after {
         content: "sent";
@@ -496,7 +490,13 @@ h1 {
     color: #333;
     margin-top: 5px; 
 }
-
+.message-checkmark {
+    position: absolute;
+    bottom: -5px;
+    right: -20px;
+    color: green;
+    font-size: 1em;
+}
 
     /* Input field */
     .add-message-form input {

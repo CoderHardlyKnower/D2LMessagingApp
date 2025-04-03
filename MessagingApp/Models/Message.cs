@@ -9,7 +9,7 @@
         public DateTime CreatedTimestamp { get; set; } = DateTime.Now; // Timestamp only for NEW messages
         public bool IsRead { get; set; } = false;  // Default: Unread
         public bool IsDeleted { get; set; } = false; // Default: Not Deleted
-        public bool IsTyping { get; set; } = false;
+        public bool IsTyping { get; set; } = false; //Not used, still kept for future proofing
         public DateTime? ReadTime { get; set; }
 
 

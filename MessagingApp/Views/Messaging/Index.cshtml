@@ -19,7 +19,6 @@
             This view renders the messaging interface and handles client-side operations such as
             sending, editing, and deleting messages via SignalR.
         -->
-
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -35,10 +34,10 @@
             <div class="message-container">
                 <h2 class="message-header-title">Messaging with @studentName</h2>
                 <div class="message-list" id="messageList">
-                    @* Calculate the most recent read message from the sender *@
+                    @* Calculate the IDs for the persistent indicator *@
                     @{
-                        var lastReadMessageId = Model
-                        .Where(m => m.SenderId == loggedInUserId && m.IsRead && m.ReadTime.HasValue)
+                        var lastSentMessageId = Model
+                        .Where(m => m.SenderId == loggedInUserId)
                         .OrderByDescending(m => m.CreatedTimestamp)
                         .Select(m => m.Id)
                         .FirstOrDefault();
@@ -66,10 +65,18 @@
                                 <div class="message @(isSentByUser ? "sent-message" : "received-message")">
                                     @message.Content
                                 </div>
-                                @* Only render the read receipt for the most recent read sent message *@
-                                @if (isSentByUser && message.IsRead && message.ReadTime.HasValue && message.Id == lastReadMessageId)
+                                @* For sent messages, always render the persistent sent icon on the last sent message.
+                        Additionally, if that message is read, render the read receipt below it.
+                        *@
+                                @if (isSentByUser && message.Id == lastSentMessageId)
                                 {
-                                    <div class="read-receipt">Read @message.ReadTime.Value.ToShortTimeString()</div>
+                                    <div class="message-checkmark">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    @if (message.IsRead && message.ReadTime.HasValue)
+                                    {
+                                        <div class="read-receipt">Read @message.ReadTime.Value.ToShortTimeString()</div>
+                                    }
                                 }
                             </div>
                         }
@@ -89,7 +96,6 @@
                     <button type="submit" class="send-btn">
                         <i class="fas fa-paper-plane"></i>
                     </button>
-
                 </form>
             </div>
 
