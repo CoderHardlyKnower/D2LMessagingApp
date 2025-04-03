@@ -175,13 +175,14 @@
                             .catch(err => console.error(err.toString()));
                     } else {
                         document.querySelectorAll(".message-checkmark").forEach(el => el.remove());
-                        const checkmark = document.createElement("span");
+                        const checkmark = document.createElement("div");
                         checkmark.className = "message-checkmark";
                         checkmark.innerHTML = '<i class="fas fa-check-circle"></i>';
                         const sentMessageDiv = wrapper.querySelector(".sent-message");
                         if (sentMessageDiv) {
-                            sentMessageDiv.appendChild(checkmark);
+                            sentMessageDiv.parentNode.insertBefore(checkmark, sentMessageDiv.nextSibling);
                         }
+
                     }
                 });
 

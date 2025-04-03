@@ -492,8 +492,9 @@ h1 {
 }
 .message-checkmark {
     position: absolute;
-    bottom: -5px;
-    right: -20px;
+    top: 68%;
+    right: 10px;
+    transform: translate(100%, -50%);
     color: green;
     font-size: 1em;
 }
