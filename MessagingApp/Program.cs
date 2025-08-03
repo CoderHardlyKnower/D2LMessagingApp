@@ -4,6 +4,9 @@ using MessagingApp.Data;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using MessagingApp.Models;
 using MessagingApp.Controllers;
+using Azure.Storage.Blobs;
+using MessagingApp.Services;    
+
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +14,16 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
+// Register the Azure BlobServiceClient using your connection string
+//builder.Services.AddSingleton(sp =>
+//    new BlobServiceClient(
+//        builder.Configuration["Azure:StorageConnectionString"]
+//    )
+//);
+//// Register our file storage abstraction
+//builder.Services.AddTransient<IFileStorageService, AzureBlobStorageService>();
+builder.Services.AddTransient<IFileStorageService, LocalFileStorageService>();
+
 
 
 // Configure SQL Server 
