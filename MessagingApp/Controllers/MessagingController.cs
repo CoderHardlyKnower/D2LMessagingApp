@@ -103,8 +103,9 @@ namespace MessagingApp.Controllers
                 _context.Messages.Add(message);
                 await _context.SaveChangesAsync();
 
-                // Push new message to the conversation group, including attachment URL
-                await _hub.Clients.Group($"conversation_{conversationId}")
+                // **Broadcast** the new message (with optional attachment URL)
+                await _hub.Clients
+                    .Group($"conversation_{conversationId}")
                     .SendAsync("ReceiveMessage",
                         message.SenderId,
                         User.Identity.Name,
@@ -115,7 +116,8 @@ namespace MessagingApp.Controllers
                     );
             }
 
-            return Ok(); // client handles render via ReceiveMessage
+            // Return 200 OK so the client-side fetch can complete
+            return Ok();
         }
 
         /// <summary>
@@ -137,9 +139,9 @@ namespace MessagingApp.Controllers
                 _context.Conversations.Add(conversation);
                 await _context.SaveChangesAsync();
 
-                var participantA = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userA, LastRead = DateTime.Now };
-                var participantB = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userB, LastRead = DateTime.Now };
-                _context.ConversationParticipants.AddRange(participantA, participantB);
+                var pa = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userA, LastRead = DateTime.Now };
+                var pb = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userB, LastRead = DateTime.Now };
+                _context.ConversationParticipants.AddRange(pa, pb);
                 await _context.SaveChangesAsync();
             }
             return conversation;

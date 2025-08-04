@@ -13,20 +13,14 @@
         <div class="col-md-3">
             @Html.Partial("_ConversationList")
         </div>
-<!--
-            Thisis the Messaging view for displaying and sending messages
-            This view renders the messaging interface and handles client-side operations such as
-            sending, editing, and deleting messages via SignalR.
-        -->
+
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="utf-8" />
             <title>Messaging - MessagingApp</title>
             <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-            <!-- SignalR client library -->
             <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
-            <!-- FontAwesome for icons -->
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
         </head>
         <body>
@@ -34,7 +28,8 @@
                 <h2 class="message-header-title">Messaging with @studentName</h2>
                 <div class="message-list" id="messageList">
                     @{
-                        var lastSentMessageId = Model.Where(m => m.SenderId == loggedInUserId)
+                        var lastSentMessageId = Model
+                        .Where(m => m.SenderId == loggedInUserId)
                         .OrderByDescending(m => m.CreatedTimestamp)
                         .Select(m => m.Id)
                         .FirstOrDefault();
@@ -44,12 +39,21 @@
                         foreach (var message in Model.Reverse())
                         {
                             bool isSentByUser = message.SenderId == loggedInUserId;
+                            bool hasAttachment = !string.IsNullOrEmpty(message.AttachmentUrl);
+                            string ext = hasAttachment
+                            ? System.IO.Path.GetExtension(message.AttachmentUrl).ToLowerInvariant()
+                            : null;
+                            var imgExts = new[] { ".png", ".jpg", ".jpeg", ".gif" };
                             <div class="message-wrapper @(isSentByUser ? "sent" : "received")" data-message-id="@message.Id">
                                 <div class="message-header">
                                     <small class="message-info">
-                                        @(userNames.ContainsKey(message.SenderId) ? userNames[message.SenderId] : "Unknown")
+                                        @(userNames.ContainsKey(message.SenderId)
+                                            ? userNames[message.SenderId]
+                                            : "Unknown")
                                         - @message.Timestamp.ToShortTimeString()
-                                        @Html.Raw(message.IsEdited ? " <span class=\"edited-label\">(edited)</span>" : "")
+                                        @Html.Raw(message.IsEdited
+                                                 ? " <span class=\"edited-label\">(edited)</span>"
+                                                 : "")
                                     </small>
                                     @if (isSentByUser)
                                     {
@@ -61,13 +65,23 @@
                                 </div>
                                 <div class="message @(isSentByUser ? "sent-message" : "received-message")">
                                     @message.Content
-                                    @* Render persisted attachments *@
-                                    @if (message.AttachmentUrl != null)
+
+                                    @if (hasAttachment)
                                     {
-                                        <div class="attachment">
-                                            <a href="@message.AttachmentUrl" target="_blank">
-                                                <i class="fas fa-paperclip"></i> Download file
-                                            </a>
+                                        <div class="attachment mt-2">
+                                            @if (imgExts.Contains(ext))
+                                            {
+                                                <a href="@message.AttachmentUrl" target="_blank">
+                                                    <img src="@message.AttachmentUrl" class="attachment-thumb" />
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a href="@message.AttachmentUrl" target="_blank">
+                                                    <i class="fas fa-paperclip"></i>
+                                                    @System.IO.Path.GetFileName(message.AttachmentUrl)
+                                                </a>
+                                            }
                                         </div>
                                     }
                                 </div>
@@ -78,7 +92,9 @@
                                     </div>
                                     @if (message.IsRead && message.ReadTime.HasValue)
                                     {
-                                        <div class="read-receipt">Read @message.ReadTime.Value.ToShortTimeString()</div>
+                                        <div class="read-receipt">
+                                            Read @message.ReadTime.Value.ToShortTimeString()
+                                        </div>
                                     }
                                 }
                             </div>
@@ -90,24 +106,33 @@
                     }
                 </div>
 
-                <form class="add-message-form" id="messageForm" method="post" asp-action="AddMessage" asp-controller="Messaging" enctype="multipart/form-data">
+                <form class="add-message-form" id="messageForm" method="post"
+                      asp-action="AddMessage" asp-controller="Messaging"
+                      enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="studentId" value="@ViewBag.StudentId" />
                     <input type="hidden" name="studentName" value="@studentName" />
                     <input type="hidden" name="conversationId" value="@conversationId" />
-                    <textarea name="content" id="contentInput" class="message-textarea" placeholder="Type your message here..." required></textarea>
+
+                    <textarea name="content" id="contentInput" class="message-textarea"
+                              + placeholder="Type your message here..."></textarea>
+
+                    <!-- File preview -->
+                    <div id="filePreview" class="file-preview mt-2"></div>
+
                     <div class="d-flex align-items-center mt-2">
-                        <button type="button" class="btn btn-light me-2" onclick="document.getElementById('fileInput').click();">
+                        <button type="button" class="btn btn-light me-2"
+                                onclick="document.getElementById('fileInput').click();">
                             <i class="fas fa-paperclip"></i>
                         </button>
                         <input type="file" id="fileInput" name="attachment" hidden />
+
                         <button type="submit" class="send-btn ms-auto">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
                 </form>
 
-                <!-- Modal Confirmation for deletion -->
                 <div class="modal-overlay" id="confirmModal">
                     <div class="modal-content">
                         <h2>Confirm Deletion</h2>
@@ -119,293 +144,247 @@
 
                 <script>
                     window.loggedInUserId = @loggedInUserId;
-                    // Global variable to store the message ID pending deletion
                     let pendingDeleteMessageId = null;
 
-                    window.onload = function () {
-                        var messageList = document.getElementById("messageList");
-                        messageList.scrollTop = 0;
-                    };
+                    window.onload = () =>
+                        document.getElementById("messageList").scrollTop = 0;
 
-                    // Initialize SignalR connection.
                     const connection = new signalR.HubConnectionBuilder()
                         .withUrl("/chatHub")
                         .build();
 
                     connection.start().then(() => {
-                        console.log("Connected to SignalR hub.");
-                        connection.invoke("JoinConversation", @conversationId)
-                            .catch(err => console.error(err.toString()));
-                        connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
-                            .catch(err => console.error(err.toString()));
-                    }).catch(err => console.error("SignalR Connection Error: ", err.toString()));
+                        connection.invoke("JoinConversation", @conversationId);
+                        connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId);
+                    });
 
-                    /// <summary>
-                    /// Handles receiving new message (now with attachmentUrl)
-                    /// </summary>
                     connection.on("ReceiveMessage", (senderId, senderName, message, timestamp, messageId, attachmentUrl) => {
                         const messageList = document.getElementById("messageList");
-                        const noMsg = messageList.querySelector("p");
-                        if (noMsg && noMsg.innerText.trim() === "No messages available.") {
-                            noMsg.remove();
-                        }
+                        messageList.querySelector("p")?.remove();
 
                         const isSentByUser = senderId == @loggedInUserId;
                         const wrapper = document.createElement("div");
                         wrapper.className = "message-wrapper " + (isSentByUser ? "sent" : "received");
                         wrapper.setAttribute("data-message-id", messageId);
 
-                        let headerHtml = `<div class="message-header">
+                        if (!message.trim() && attachmentUrl) {
+                            wrapper.classList.add("file-only");
+                        }
+
+                        let header = `<div class="message-header">
                                             <small class="message-info">${senderName} - ${timestamp}</small>`;
                         if (isSentByUser) {
-                            headerHtml += `<div class="message-actions">
+                            header += `<div class="message-actions">
                                                 <i class="fas fa-edit edit-icon" title="Edit"></i>
                                                 <i class="fas fa-trash delete-icon" title="Delete"></i>
                                             </div>`;
                         }
-                        headerHtml += `</div>`;
+                        header += `</div>`;
 
-                        // Build the message body, appending attachment link if provided
-                        let bodyHtml = `<div class="message ${isSentByUser ? "sent-message" : "received-message"}">${message}`;
+                        let body = `<div class="message ${isSentByUser ? "sent-message" : "received-message"}">${message}`;
                         if (attachmentUrl) {
-                            bodyHtml += `<div class="attachment">
-                                                <a href="${attachmentUrl}" target="_blank">
-                                                    <i class="fas fa-paperclip"></i> Download file
-                                                </a>
-                                            </div>`;
+                            const ext = attachmentUrl.split('.').pop().toLowerCase();
+                            const imgExts = ["png", "jpg", "jpeg", "gif"];
+                            if (imgExts.includes(ext)) {
+                                body += `<div class="attachment mt-2">
+                                                    <a href="${attachmentUrl}" target="_blank">
+                                                        <img src="${attachmentUrl}" class="attachment-thumb" />
+                                                    </a>
+                                                </div>`;
+                            } else {
+                                const name = attachmentUrl.split('/').pop();
+                                body += `<div class="attachment mt-2">
+                                                    <a href="${attachmentUrl}" target="_blank">
+                                                        <i class="fas fa-paperclip"></i> ${name}
+                                                    </a>
+                                                </div>`;
+                            }
                         }
-                        bodyHtml += `</div>`;
+                        body += `</div>`;
 
-                        wrapper.innerHTML = headerHtml + bodyHtml;
+                        wrapper.innerHTML = header + body;
                         messageList.insertBefore(wrapper, messageList.firstChild);
-                    // Use a short delay to ensure layout is updated, then reset scrollTop to 0.
-                        setTimeout(() => {
-                            messageList.scrollTop = 0;
-                        }, 10);
+                        setTimeout(() => messageList.scrollTop = 0, 10);
 
-                    // If the message comes from other user in chat, mark it as read
                         if (!isSentByUser) {
                             connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
-                                .catch(err => console.error(err.toString()));
+                                .catch(err => console.error(err));
                         } else {
                             document.querySelectorAll(".message-checkmark").forEach(el => el.remove());
-                            const checkmark = document.createElement("div");
-                            checkmark.className = "message-checkmark";
-                            checkmark.innerHTML = '<i class="fas fa-check-circle"></i>';
-                            const sentMessageDiv = wrapper.querySelector(".sent-message");
-                            if (sentMessageDiv) {
-                                sentMessageDiv.parentNode.insertBefore(checkmark, sentMessageDiv.nextSibling);
-                            }
+                            const check = document.createElement("div");
+                            check.className = "message-checkmark";
+                            check.innerHTML = '<i class="fas fa-check-circle"></i>';
+                            wrapper.querySelector(".sent-message")
+                                .parentNode.insertBefore(check, wrapper.querySelector(".sent-message").nextSibling);
                         }
                     });
 
-                    /// <summary>
-                    /// Intercepts the message form submission to send new message via SignalR
-                    /// </summary>
-                    document.getElementById("messageForm").addEventListener("submit", function (event) {
-                        event.preventDefault();
-                        cancelActiveEdits();
-                        const contentInput = document.getElementById("contentInput");
-                        if (contentInput.value.trim() === "" && !document.getElementById("fileInput").files.length) return;
-                        const convId = parseInt(document.querySelector('input[name="conversationId"]').value, 10);
-
-                        // Use form POST for attachments/text
-                        const form = event.target;
-                        const data = new FormData(form);
-                        fetch(form.action, { method: 'POST', body: data })
-                            .catch(err => console.error("SendMessage error:", err));
-
-                        contentInput.value = "";
-                        document.getElementById("fileInput").value = "";
-                    });
-
-                    //refresh the conversation list.
-                    connection.on("UpdateConversations", () => {
-                        if (typeof updateConversations === "function") {
-                            updateConversations();
+                    document.getElementById("fileInput").addEventListener("change", function () {
+                        const preview = document.getElementById("filePreview");
+                        preview.innerHTML = "";
+                        const file = this.files[0];
+                        if (!file) return;
+                        const allowed = ["pdf", "png", "jpg", "jpeg", "gif"];
+                        const ext = file.name.split('.').pop().toLowerCase();
+                        if (!allowed.includes(ext)) {
+                            alert("Unsupported file type. Please select PDF or an image.");
+                            this.value = "";
+                            return;
+                        }
+                        if (["png", "jpg", "jpeg", "gif"].includes(ext)) {
+                            const reader = new FileReader();
+                            reader.onload = e => {
+                                const img = document.createElement("img");
+                                img.src = e.target.result;
+                                img.className = "preview-thumb";
+                                img.onclick = () => window.open(img.src, "_blank");
+                                preview.appendChild(img);
+                            };
+                            reader.readAsDataURL(file);
                         } else {
-                            console.log("updateConversations function not found.");
+                            const nameDiv = document.createElement("div");
+                            nameDiv.textContent = file.name;
+                            nameDiv.className = "preview-filename";
+                            preview.appendChild(nameDiv);
                         }
                     });
 
-                    // Helper: Cancel any active edit inputs.
+                    document.getElementById("messageForm").addEventListener("submit", function (e) {
+                        e.preventDefault();
+                        cancelActiveEdits();
+                        const content = document.getElementById("contentInput").value.trim();
+                        const hasFile = document.getElementById("fileInput").files.length > 0;
+                        if (!content && !hasFile) return;
+                        const data = new FormData(this);
+                        fetch(this.action, { method: 'POST', body: data })
+                            .catch(err => console.error("SendMessage error:", err));
+                        document.getElementById("contentInput").value = "";
+                        document.getElementById("fileInput").value = "";
+                        document.getElementById("filePreview").innerHTML = "";
+                    });
+
+                    connection.on("UpdateConversations", () => {
+                        if (typeof updateConversations === "function") updateConversations();
+                    });
+
                     function cancelActiveEdits() {
-                        const activeInputs = document.querySelectorAll(".message-wrapper input[type='text']");
-                        activeInputs.forEach(input => {
-                            const parentDiv = input.parentElement;
-                            if (parentDiv.dataset.originalText) {
-                                parentDiv.innerText = parentDiv.dataset.originalText;
-                            } else {
-                                parentDiv.innerText = input.value;
-                            }
+                        document.querySelectorAll(".message-wrapper input[type='text']").forEach(input => {
+                            const pd = input.parentElement;
+                            pd.innerText = pd.dataset.originalText || input.value;
                         });
                     }
 
-                    /// <summary>
-                    /// Delegates click events for editing/deleting
-                    /// </summary>
-                    document.getElementById("messageList").addEventListener("click", function (event) {
-                        const target = event.target;
-                        const wrapper = target.closest(".message-wrapper");
-                        if (!wrapper) return;
-                        const messageId = parseInt(wrapper.getAttribute("data-message-id"), 10);
+                    document.getElementById("messageList").addEventListener("click", function (e) {
+                        const t = e.target, wrap = t.closest(".message-wrapper");
+                        if (!wrap) return;
+                        const msgId = +wrap.dataset.messageId;
 
-                        // Delete
-                        if (target.classList.contains("delete-icon")) {
-                            pendingDeleteMessageId = messageId;
+                        if (t.classList.contains("delete-icon")) {
+                            pendingDeleteMessageId = msgId;
                             document.getElementById("confirmModal").style.display = "flex";
                         }
-
-                        // Edit
-                        if (target.classList.contains("edit-icon")) {
-                            const messageDiv = wrapper.querySelector(".message");
-                            const originalText = messageDiv.innerText;
-                            if (messageDiv.querySelector("input")) return;
-                            const input = document.createElement("input");
-                            input.type = "text";
-                            input.value = originalText;
-                            input.style.width = "80%";
-                            messageDiv.dataset.originalText = originalText;
-                            messageDiv.innerHTML = "";
-                            messageDiv.appendChild(input);
-                            input.focus();
-
-                            let editSaved = false;
-                            function saveEdit() {
-                                const newContent = input.value.trim();
-                                if (newContent === "" || newContent === originalText) {
-                                    cancelEdit();
-                                    return;
-                                }
-                                editSaved = true;
-                                input.removeEventListener("blur", onBlur);
-                                connection.invoke("EditMessage", messageId, newContent)
-                                    .catch(err => console.error(err.toString()));
+                        if (t.classList.contains("edit-icon")) {
+                            const md = wrap.querySelector(".message");
+                            const orig = md.innerText;
+                            if (md.querySelector("input")) return;
+                            const inp = document.createElement("input");
+                            inp.type = "text"; inp.value = orig; inp.style.width = "80%";
+                            md.dataset.originalText = orig; md.innerHTML = ""; md.appendChild(inp); inp.focus();
+                            let saved = false;
+                            function save() {
+                                const v = inp.value.trim();
+                                if (!v || v === orig) return cancel();
+                                saved = true; inp.removeEventListener("blur", blur);
+                                connection.invoke("EditMessage", msgId, v).catch(console.error);
                             }
-                            function cancelEdit() {
-                                messageDiv.innerText = originalText;
-                            }
-                            function onBlur() {
-                                setTimeout(() => {
-                                    if (!editSaved) cancelEdit();
-                                }, 300);
-                            }
-                            input.addEventListener("keydown", function (e) {
-                                if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    saveEdit();
-                                    input.blur();
-                                } else if (e.key === "Escape") {
-                                    e.preventDefault();
-                                    cancelEdit();
-                                }
+                            function cancel() { md.innerText = orig; }
+                            function blur() { setTimeout(() => !saved && cancel(), 300); }
+                            inp.addEventListener("keydown", e => {
+                                if (e.key === "Enter") { e.preventDefault(); save(); inp.blur(); }
+                                if (e.key === "Escape") { e.preventDefault(); cancel(); }
                             });
-                            input.addEventListener("blur", onBlur);
-                            const saveIcon = document.createElement("i");
-                            saveIcon.className = "fas fa-check";
-                            saveIcon.style.cursor = "pointer";
-                            saveIcon.title = "Save";
-                            const cancelIcon = document.createElement("i");
-                            cancelIcon.className = "fas fa-times";
-                            cancelIcon.style.cursor = "pointer";
-                            cancelIcon.title = "Cancel";
-                            messageDiv.appendChild(saveIcon);
-                            messageDiv.appendChild(cancelIcon);
-                            saveIcon.addEventListener("click", saveEdit);
-                            cancelIcon.addEventListener("click", cancelEdit);
+                            inp.addEventListener("blur", blur);
+                            const ok = document.createElement("i"), no = document.createElement("i");
+                            ok.className = "fas fa-check"; ok.title = "Save"; ok.style.cursor = "pointer";
+                            no.className = "fas fa-times"; no.title = "Cancel"; no.style.cursor = "pointer";
+                            md.appendChild(ok); md.appendChild(no);
+                            ok.addEventListener("click", save);
+                            no.addEventListener("click", cancel);
                         }
                     });
 
-                    /// <summary>
-                    /// Confirm deletion modal
-                    /// </summary>
-                    document.getElementById("confirmDeleteBtn").addEventListener("click", function () {
+                    document.getElementById("confirmDeleteBtn").addEventListener("click", () => {
                         if (pendingDeleteMessageId != null) {
-                            connection.invoke("DeleteMessage", pendingDeleteMessageId)
-                                .catch(err => console.error(err.toString()));
+                            connection.invoke("DeleteMessage", pendingDeleteMessageId).catch(console.error);
                             document.getElementById("confirmModal").style.display = "none";
                             pendingDeleteMessageId = null;
                         }
                     });
-                    document.getElementById("cancelDeleteBtn").addEventListener("click", function () {
+                    document.getElementById("cancelDeleteBtn").addEventListener("click", () => {
                         document.getElementById("confirmModal").style.display = "none";
                         pendingDeleteMessageId = null;
                     });
 
-                    connection.on("MessageRead", (messageId, readTime) => {
+                    connection.on("MessageRead", (id, rt) => {
                         document.querySelectorAll(".read-receipt").forEach(el => el.remove());
-                        const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
-                        if (wrapper && wrapper.classList.contains("sent")) {
-                            const sentMessageDiv = wrapper.querySelector(".sent-message");
-                            if (sentMessageDiv) {
-                                const receipt = document.createElement("div");
-                                receipt.className = "read-receipt";
-                                receipt.innerText = `Read ${readTime}`;
-                                sentMessageDiv.parentNode.insertBefore(receipt, sentMessageDiv.nextSibling);
-                            }
+                        const w = document.querySelector(`[data-message-id='${id}']`);
+                        if (w?.classList.contains("sent")) {
+                            const sm = w.querySelector(".sent-message");
+                            const rc = document.createElement("div");
+                            rc.className = "read-receipt"; rc.innerText = `Read ${rt}`;
+                            sm.parentNode.insertBefore(rc, sm.nextSibling);
                         }
                     });
 
-                    connection.on("MessageEdited", (messageId, newContent, timestamp) => {
-                        const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
-                        if (wrapper) {
-                            const messageDiv = wrapper.querySelector(".message");
-                            messageDiv.innerText = newContent;
-                            const infoEl = wrapper.querySelector(".message-info");
-                            let parts = infoEl.innerText.split("-");
-                            let senderName = parts[0].trim();
-                            infoEl.innerHTML = `${senderName} - ${timestamp} <span class="edited-label">(edited)</span>`;
+                    connection.on("MessageEdited", (id, newC, ts) => {
+                        const w = document.querySelector(`[data-message-id='${id}']`);
+                        if (w) {
+                            const md = w.querySelector(".message"); md.innerText = newC;
+                            const ie = w.querySelector(".message-info");
+                            let sn = ie.innerText.split("-")[0].trim();
+                            ie.innerHTML = `${sn} - ${ts} <span class="edited-label">(edited)</span>`;
                         }
                     });
 
-                    connection.on("MessageDeleted", (messageId) => {
-                        const wrapper = document.querySelector(`.message-wrapper[data-message-id='${messageId}']`);
-                        if (wrapper) {
-                            const infoEl = wrapper.querySelector(".message-info");
-                            let senderName = "User";
-                            if (infoEl && infoEl.innerText.indexOf(" - ") !== -1) {
-                                senderName = infoEl.innerText.split(" - ")[0];
-                            }
-                            wrapper.innerHTML = `<div class="deleted-message">${senderName} deleted a message</div>`;
+                    connection.on("MessageDeleted", (id) => {
+                        const w = document.querySelector(`[data-message-id='${id}']`);
+                        if (w) {
+                            const ie = w.querySelector(".message-info");
+                            let sn = ie ? ie.innerText.split("-")[0].trim() : "User";
+                            w.innerHTML = `<div class="deleted-message">${sn} deleted a message</div>`;
                         }
                     });
 
-                    // Mobile/touch friendly actions toggle
-                    document.addEventListener("DOMContentLoaded", function () {
-                        document.querySelectorAll(".message-wrapper").forEach(wrapper => {
-                            wrapper.addEventListener("click", function (event) {
-                                if (event.target.closest(".message-actions")) return;
-                                document.querySelectorAll(".message-wrapper.show-actions").forEach(el => {
-                                    if (el !== this) el.classList.remove("show-actions");
-                                });
-                                this.classList.toggle("show-actions");
+                    document.addEventListener("DOMContentLoaded", () => {
+                        document.querySelectorAll(".message-wrapper").forEach(w => {
+                            w.addEventListener("click", e => {
+                                if (e.target.closest(".message-actions")) return;
+                                document.querySelectorAll(".message-wrapper.show-actions")
+                                    .forEach(x => x !== w && x.classList.remove("show-actions"));
+                                w.classList.toggle("show-actions");
                             });
                         });
                     });
 
-                    window.addEventListener("focus", function () {
+                    window.addEventListener("focus", () => {
                         connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
-                            .catch(err => console.error(err.toString()));
+                            .catch(console.error);
                     });
 
-                    const textarea = document.getElementById("contentInput");
-                    textarea.addEventListener("input", function () {
+                    const ta = document.getElementById("contentInput");
+                    ta.addEventListener("input", function () {
                         this.style.height = "auto";
                         this.style.height = this.scrollHeight + "px";
-                        const lineHeight = parseFloat(getComputedStyle(this).lineHeight);
-                        if (this.scrollHeight > lineHeight * 4) {
-                            this.style.overflowY = "auto";
-                        } else {
-                            this.style.overflowY = "hidden";
-                        }
+                        const lh = parseFloat(getComputedStyle(this).lineHeight);
+                        this.style.overflowY = this.scrollHeight > lh * 4 ? "auto" : "hidden";
                     });
-
-                    document.addEventListener("DOMContentLoaded", function () {
-                        const textarea = document.getElementById("contentInput");
-                        textarea.addEventListener("keydown", function (event) {
-                            if (event.key === "Enter" && !event.shiftKey) {
-                                event.preventDefault();
-                                document.getElementById("messageForm").dispatchEvent(new Event("submit", { cancelable: true }));
+                    document.addEventListener("DOMContentLoaded", () => {
+                        const t1 = document.getElementById("contentInput");
+                        t1.addEventListener("keydown", e => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                document.getElementById("messageForm")
+                                    .dispatchEvent(new Event("submit", { cancelable: true }));
                             }
                         });
                     });
