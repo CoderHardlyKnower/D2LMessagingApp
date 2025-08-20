@@ -160,6 +160,7 @@ namespace MessagingApp.Controllers
         /// <summary>
         /// Returns recent conversations for the current user.
         /// </summary>
+        //Get recent conversations for chat window in course selection
         public async Task<IActionResult> GetRecentConversations(int excludeConversationId = 0)
         {
             int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
@@ -171,19 +172,25 @@ namespace MessagingApp.Controllers
                 select new
                 {
                     c.ConversationId,
-                    LastMessage = lastMsg.Content,
+                    LastMessage = lastMsg.Content,                 // raw text (may be "")
                     LastMessageTimestamp = lastMsg.Timestamp,
                     LastMessageSenderId = lastMsg.SenderId,
+                    // New: attachment flags for UI
+                    HasAttachment = !string.IsNullOrEmpty(lastMsg.AttachmentUrl),
+                    IsFileOnly = !string.IsNullOrEmpty(lastMsg.AttachmentUrl) && string.IsNullOrWhiteSpace(lastMsg.Content),
+
                     missedCount = c.Messages.Count(m =>
-                        m.Timestamp > c.Participants.First(p => p.UserId == loggedInUserId).LastRead
+                        m.Timestamp > c.Participants.FirstOrDefault(p => p.UserId == loggedInUserId).LastRead
                         && m.SenderId != loggedInUserId),
+
                     Student = c.Participants
                                 .Where(p => p.UserId != loggedInUserId)
                                 .Select(p => new { p.User.UserId, p.User.Name })
                                 .FirstOrDefault()
                 }
-            ).OrderByDescending(c => c.LastMessageTimestamp)
-             .ToListAsync();
+            )
+            .OrderByDescending(c => c.LastMessageTimestamp)
+            .ToListAsync();
 
             return Json(conversations);
         }

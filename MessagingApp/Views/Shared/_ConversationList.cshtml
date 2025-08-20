@@ -183,7 +183,6 @@
 <div id="conversationListContainer" class="conversation-list-container">
     <div class="conversation-list-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h4>Your Conversations</h4>
-        <!-- New: Minimize button -->
         <button id="minimizeConvoList" class="minimize-btn"><i class="fas fa-times"></i></button>
     </div>
     <div id="conversationList" class="conversation-list">
@@ -192,7 +191,6 @@
 </div>
 
 <script>
-    // Show/hide conversation list on mobile
     function showConvoList() {
         document.getElementById("conversationListContainer").style.display = "block";
         document.getElementById("conversationWidget").style.display = "none";
@@ -202,15 +200,8 @@
         document.getElementById("conversationWidget").style.display = "flex";
     }
 
-    // Widget icon
-    document.getElementById("conversationWidget").addEventListener("click", function () {
-        showConvoList();
-    });
-
-    //minimize button
-    document.getElementById("minimizeConvoList").addEventListener("click", function () {
-        hideConvoList();
-    });
+    document.getElementById("conversationWidget").addEventListener("click", showConvoList);
+    document.getElementById("minimizeConvoList").addEventListener("click", hideConvoList);
 
     function adjustConvoDisplay() {
         if (window.innerWidth <= 750) {
@@ -220,26 +211,16 @@
             document.getElementById("conversationWidget").style.display = "";
         }
     }
-    //This is so you cant minimize the window a larger screens
     function adjustBackButton() {
-        if (window.innerWidth > 750) {
-            document.getElementById("minimizeConvoList").style.display = "none";
-        } else {
-            document.getElementById("minimizeConvoList").style.display = "block";
-        }
+        document.getElementById("minimizeConvoList").style.display = (window.innerWidth > 750) ? "none" : "block";
     }
-
-    // Call on page load and on resize
     window.addEventListener("resize", adjustBackButton);
     adjustBackButton();
-
-
     window.addEventListener("resize", adjustConvoDisplay);
     adjustConvoDisplay();
 
     var currentConversationId = '@(ViewBag.ConversationId ?? 0)';
 
-    // Fetch recent conversations
     async function fetchActiveConversations() {
         try {
             let url = '/Messaging/GetRecentConversations';
@@ -247,54 +228,60 @@
                 url += '?excludeConversationId=' + currentConversationId;
             }
             const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error("Couldn't get recent conversations");
-            }
-            const data = await response.json();
-            return data;
+            if (!response.ok) throw new Error("Couldn't get recent conversations");
+            return await response.json();
         } catch (error) {
             console.error(error);
             return [];
         }
     }
-    // Render the conversation list
+
     function renderConversations(conversations) {
         const conversationList = document.getElementById("conversationList");
-        conversationList.innerHTML = ""; // Clear previous content
+        conversationList.innerHTML = "";
         if (conversations.length === 0) {
             conversationList.innerHTML = "<p>No active conversations</p>";
             return;
         }
+
         conversations.forEach(conversation => {
             if (conversation.conversationId == currentConversationId) {
                 conversation.missedCount = 0;
             }
+
             const date = new Date(conversation.lastMessageTimestamp);
             const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            var badge = "";
-            if (conversation.missedCount > 0) {
-                badge = `<span class="badge bg-danger">${conversation.missedCount}</span>`;
-            }
-            // If the last message sender is the curent user, show "You: message",
-            // Otherwise show "StudentName: message"
-            var previewText = "";
-            if (conversation.lastMessageSenderId == window.loggedInUserId) {
-                previewText = "You: " + conversation.lastMessage;
-            } else {
-                previewText = conversation.student.name + ": " + conversation.lastMessage;
-            }
-            var unreadClass = conversation.missedCount > 0 ? " unread" : "";
-            var conversationHtml = `
-                    <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}&conversationId=${conversation.conversationId}" class="conversation ${unreadClass}">
-                        <div class="conversation-header">
-                            <h4>${conversation.student.name}</h4>
-                            <span class="timestamp">${time}</span>
-                        </div>
-                        <p>${previewText}</p>
-                        <div class="badge-container">${badge}</div>
-                    </a>
-                `;
-            conversationList.innerHTML += conversationHtml;
+
+            const badge = conversation.missedCount > 0
+                ? `<span class="badge bg-danger">${conversation.missedCount}</span>` : "";
+
+            // New: paperclip only when it's file-only
+            const clip = conversation.isFileOnly ? `<i class="fas fa-paperclip me-1"></i>` : "";
+
+            // Build preview with “You:” vs “Name:”, and clip if file-only
+            let who = (conversation.lastMessageSenderId == window.loggedInUserId)
+                ? "You"
+                : conversation.student.name;
+
+            let previewBody = conversation.isFileOnly
+                ? `${clip}Attachment`
+                : (conversation.lastMessage ?? "");
+
+            const previewText = `${who}: ${previewBody}`;
+
+            const unreadClass = conversation.missedCount > 0 ? " unread" : "";
+
+            const conversationHtml = `
+                <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}&conversationId=${conversation.conversationId}" class="conversation ${unreadClass}">
+                    <div class="conversation-header">
+                        <h4>${conversation.student.name}</h4>
+                        <span class="timestamp">${time}</span>
+                    </div>
+                    <p>${conversation.missedCount > 0 ? `<b>${previewText}</b>` : previewText}</p>
+                    <div class="badge-container">${badge}</div>
+                </a>
+            `;
+            conversationList.insertAdjacentHTML("beforeend", conversationHtml);
         });
     }
 
@@ -303,8 +290,6 @@
         renderConversations(conversations);
     }
 
-    // Initial load of conversations.
     updateConversations();
-    // Refresh conversation list every 10 seconds.
     setInterval(updateConversations, 10000);
 </script>

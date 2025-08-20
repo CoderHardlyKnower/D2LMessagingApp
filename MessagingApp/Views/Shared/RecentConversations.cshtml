@@ -151,35 +151,43 @@
 
         const recentConversations = await fetchRecentConversations();
         updateGlobalUnreadBadge(recentConversations);
-        if (recentConversations.length !== 0) {
-            recentConversations.forEach(conversation => {
-                const date = new Date(conversation.lastMessageTimestamp);
-                const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                // Prepare red badge and bold text if there are missed messages
+         if (recentConversations.length !== 0) {
+        recentConversations.forEach(conversation => {
+            const timestamp = conversation.lastMessageTimestamp;
+            const date = new Date(timestamp);
+            const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-                const badge = conversation.missedCount > 0
-                    ? `<span class="badge bg-danger ms-2">${conversation.missedCount}</span>`
-                    : "";
+            const badge = conversation.missedCount > 0
+                ? `<span class="badge bg-danger ms-2">${conversation.missedCount}</span>`
+                : "";
 
-                const messageText = conversation.missedCount > 0
-                    ? `<b>${conversation.lastMessage ?? ""}</b>`
-                    : (conversation.lastMessage ?? "");
+            // New: paperclip for file-only
+            const clip = conversation.isFileOnly ? `<i class="fas fa-paperclip me-1"></i>` : "";
 
-                const content = `
-                    <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}">
-                        <div class="conversation">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h4>${conversation.student.name}${badge}</h4>
-                                <span>${time}</span>
-                            </div>
-                            <p>${messageText}</p>
+            // Keep bolding when unread, and show nothing if no text for file-only
+            const rawText = conversation.lastMessage ?? "";
+            const textWithIcon = conversation.isFileOnly ? `${clip}Attachment` : `${rawText}`;
+            const messageText = conversation.missedCount > 0
+                ? `<b>${textWithIcon}</b>`
+                : textWithIcon;
+
+            const content = `
+                <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}">
+                    <div class="conversation">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4>${conversation.student.name}${badge}</h4>
+                            <span>${time}</span>
                         </div>
-                    </a>`;
-                activeChatsDiv.insertAdjacentHTML("beforeend", content);
-            });
-        } else {
-            activeChatsDiv.innerHTML = `<div class="text-center mt-2">No Conversations</div>`;
-        }
+                        <p>${messageText}</p>
+                    </div>
+                </a>
+            `;
+            activeChatsDiv.insertAdjacentHTML("beforeend", content);
+        });
+    } else {
+        activeChatsDiv.innerHTML = `<div class="text-center mt-2">No Conversations</div>`;
+    }
+
     }
 
     function updateGlobalUnreadBadge(recentConversations) {
