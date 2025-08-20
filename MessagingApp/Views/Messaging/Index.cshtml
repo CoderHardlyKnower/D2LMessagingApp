@@ -44,7 +44,8 @@
                             ? System.IO.Path.GetExtension(message.AttachmentUrl).ToLowerInvariant()
                             : null;
                             var imgExts = new[] { ".png", ".jpg", ".jpeg", ".gif" };
-                            <div class="message-wrapper @(isSentByUser ? "sent" : "received")" data-message-id="@message.Id">
+                            <div class="message-wrapper @(isSentByUser ? "sent" : "received") @(hasAttachment && string.IsNullOrWhiteSpace(message.Content) ? "file-only" : "")"
+                                 data-message-id="@message.Id">
                                 <div class="message-header">
                                     <small class="message-info">
                                         @(userNames.ContainsKey(message.SenderId)
@@ -105,7 +106,6 @@
                         <p>No messages available.</p>
                     }
                 </div>
-
                 <form class="add-message-form" id="messageForm" method="post"
                       asp-action="AddMessage" asp-controller="Messaging"
                       enctype="multipart/form-data">
@@ -115,9 +115,8 @@
                     <input type="hidden" name="conversationId" value="@conversationId" />
 
                     <textarea name="content" id="contentInput" class="message-textarea"
-                              + placeholder="Type your message here..."></textarea>
+                              placeholder="Type your message here..."></textarea>
 
-                    <!-- File preview -->
                     <div id="filePreview" class="file-preview mt-2"></div>
 
                     <div class="d-flex align-items-center mt-2">
@@ -125,7 +124,7 @@
                                 onclick="document.getElementById('fileInput').click();">
                             <i class="fas fa-paperclip"></i>
                         </button>
-                        <input type="file" id="fileInput" name="attachment" hidden />
+                        <input type="file" id="fileInput" name="attachment" hidden accept=".pdf,image/*" />
 
                         <button type="submit" class="send-btn ms-auto">
                             <i class="fas fa-paper-plane"></i>
@@ -336,13 +335,25 @@
                         }
                     });
 
-                    connection.on("MessageEdited", (id, newC, ts) => {
+                                      connection.on("MessageEdited", (id, newC, ts) => {
                         const w = document.querySelector(`[data-message-id='${id}']`);
-                        if (w) {
-                            const md = w.querySelector(".message"); md.innerText = newC;
-                            const ie = w.querySelector(".message-info");
-                            let sn = ie.innerText.split("-")[0].trim();
-                            ie.innerHTML = `${sn} - ${ts} <span class="edited-label">(edited)</span>`;
+                        if (!w) return;
+
+                        const body = w.querySelector(".message");
+                        if (!body) return;
+
+                        // Preserve any attachment block
+                        const attachment = body.querySelector(".attachment");
+                        body.innerHTML = ""; 
+                        const textNode = document.createTextNode(newC);
+                        body.appendChild(textNode);
+                        if (attachment) body.appendChild(attachment);
+
+                        // Update header timestamp + edited label
+                        const info = w.querySelector(".message-info");
+                        if (info) {
+                            const nameOnly = info.innerText.split("-")[0].trim();
+                            info.innerHTML = `${nameOnly} - ${ts} <span class="edited-label">(edited)</span>`;
                         }
                     });
 

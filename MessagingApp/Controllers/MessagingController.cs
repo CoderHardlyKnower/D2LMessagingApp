@@ -75,50 +75,60 @@ namespace MessagingApp.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddMessage(
-            int studentId,
-            string content,
-            string studentName,
-            int conversationId,
-            IFormFile? attachment
-        )
+     int studentId,
+     string content,
+     string studentName,
+     int conversationId,
+     IFormFile? attachment
+ )
         {
-            if (!string.IsNullOrEmpty(content) || (attachment?.Length ?? 0) > 0)
+            // Allow: text OR file OR both
+            if (string.IsNullOrWhiteSpace(content) && (attachment == null || attachment.Length == 0))
             {
-                int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
-                var message = new Message
-                {
-                    Content = content,
-                    Timestamp = DateTime.Now,
-                    SenderId = loggedInUserId,
-                    ReceiverId = studentId,
-                    ConversationId = conversationId
-                };
-
-                if (attachment != null && attachment.Length > 0)
-                {
-                    using var stream = attachment.OpenReadStream();
-                    message.AttachmentUrl = await _fileStorage.UploadAsync(stream, attachment.FileName);
-                }
-
-                _context.Messages.Add(message);
-                await _context.SaveChangesAsync();
-
-                // **Broadcast** the new message (with optional attachment URL)
-                await _hub.Clients
-                    .Group($"conversation_{conversationId}")
-                    .SendAsync("ReceiveMessage",
-                        message.SenderId,
-                        User.Identity.Name,
-                        message.Content,
-                        message.Timestamp.ToShortTimeString(),
-                        message.Id,
-                        message.AttachmentUrl
-                    );
+                return BadRequest("No content or attachment provided.");
             }
 
-            // Return 200 OK so the client-side fetch can complete
-            return Ok();
+            int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
+
+            var message = new Message
+            {
+                // Ensure Content is never null (helps with non-null DB columns and simple UI checks)
+                Content = content ?? string.Empty,
+                Timestamp = DateTime.Now,
+                CreatedTimestamp = DateTime.Now,   
+                SenderId = loggedInUserId,
+                ReceiverId = studentId,
+                ConversationId = conversationId,
+                IsRead = false
+            };
+
+            if (attachment != null && attachment.Length > 0)
+            {
+                using var stream = attachment.OpenReadStream();
+                message.AttachmentUrl = await _fileStorage.UploadAsync(stream, attachment.FileName);
+            }
+
+            _context.Messages.Add(message);
+            await _context.SaveChangesAsync();
+
+            // Standardize the broadcast SHAPE so the client can always rely on arg positions:
+            await _hub.Clients
+                .Group($"conversation_{conversationId}")
+                .SendAsync("ReceiveMessage",
+                    message.SenderId,
+                    User.Identity!.Name,
+                    message.Content,
+                    message.Timestamp.ToShortTimeString(),
+                    message.Id,
+                    message.AttachmentUrl
+                );
+
+            // Keep the sidebar badges/lists fresh
+            await _hub.Clients.All.SendAsync("UpdateConversations");
+
+            return Ok(new { messageId = message.Id });
         }
+
 
         /// <summary>
         /// Ensures a two-user conversation exists, creating if necessary.
