@@ -120,7 +120,7 @@
 </div>
 
 @* Chat window *@
-<div class="chat-window">
+<div class="chat-window" style="display:none;">
     <div class="chat-window-header flex">
         <h4>Recent Conversations</h4>
         <div class="icons">
@@ -128,12 +128,11 @@
         </div>
     </div>
 
-    <div class="active-chats">
-    </div>
+    <div class="active-chats"></div>
 </div>
 
 <script>
-    //Hide chat window when close button is clicked
+    // ------------------- UI helpers -------------------
     function hideChatWindow() {
         const chatWindow = document.querySelector(".chat-window");
         const chatWidget = document.querySelector(".chat-widget");
@@ -141,7 +140,6 @@
         chatWidget.style.display = "flex";
     }
 
-    //Hide chat-widget, fetch recent conversations
     async function getRecentConversations() {
         const chatWindow = document.querySelector(".chat-window");
         const activeChatsDiv = document.querySelector(".active-chats");
@@ -151,47 +149,50 @@
         chatWindow.style.display = "block";
         activeChatsDiv.innerHTML = "";
 
-        var recentConversations = await fetchRecentConversations();
+        const recentConversations = await fetchRecentConversations();
         updateGlobalUnreadBadge(recentConversations);
-        if (recentConversations.length !== 0) {
-            recentConversations.forEach(conversation => {
-                const timestamp = conversation.lastMessageTimestamp;
-                const date = new Date(timestamp);
-                const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+         if (recentConversations.length !== 0) {
+        recentConversations.forEach(conversation => {
+            const timestamp = conversation.lastMessageTimestamp;
+            const date = new Date(timestamp);
+            const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-                // Prepare red badge and bold text if there are missed messages
-                var badge = "";
-                if (conversation.missedCount > 0) {
-                    badge = `<span class="badge bg-danger ms-2">${conversation.missedCount}</span>`;
-                }
-                var messageText = conversation.lastMessage;
-                if (conversation.missedCount > 0) {
-                    messageText = `<b>${conversation.lastMessage}</b>`;
-                }
-                var content = `
-                        <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${conversation.student.name}">
-                            <div class="conversation">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <h4>${conversation.student.name}${badge}</h4>
-                                    <span>${time}</span>
-                                </div>
-                                <p>${messageText}</p>
-                            </div>
-                        </a>
-                    `;
-                activeChatsDiv.innerHTML += content;
-            });
-        } else {
-            activeChatsDiv.innerHTML = `<div class="text-center mt-2">No Conversations</div>`;
-        }
+            const badge = conversation.missedCount > 0
+                ? `<span class="badge bg-danger ms-2">${conversation.missedCount}</span>`
+                : "";
+
+            // New: paperclip for file-only
+            const clip = conversation.isFileOnly ? `<i class="fas fa-paperclip me-1"></i>` : "";
+
+            // Keep bolding when unread, and show nothing if no text for file-only
+            const rawText = conversation.lastMessage ?? "";
+            const textWithIcon = conversation.isFileOnly ? `${clip}Attachment` : `${rawText}`;
+            const messageText = conversation.missedCount > 0
+                ? `<b>${textWithIcon}</b>`
+                : textWithIcon;
+
+            const content = `
+                <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}">
+                    <div class="conversation">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4>${conversation.student.name}${badge}</h4>
+                            <span>${time}</span>
+                        </div>
+                        <p>${messageText}</p>
+                    </div>
+                </a>
+            `;
+            activeChatsDiv.insertAdjacentHTML("beforeend", content);
+        });
+    } else {
+        activeChatsDiv.innerHTML = `<div class="text-center mt-2">No Conversations</div>`;
     }
 
-    // Update global unred badge on the chat widget
+    }
+
     function updateGlobalUnreadBadge(recentConversations) {
         let totalMissed = 0;
-        recentConversations.forEach(conversation => {
-            totalMissed += conversation.missedCount;
-        });
+        for (const c of recentConversations) totalMissed += (c.missedCount || 0);
         const badgeEl = document.getElementById("globalUnreadBadge");
         if (totalMissed > 0) {
             badgeEl.innerText = totalMissed;
@@ -200,30 +201,105 @@
             badgeEl.style.display = "none";
         }
     }
-    //Updated grammar ;p
+
     async function fetchRecentConversations() {
         try {
-            const response = await fetch('/Messaging/GetRecentConversations');
-            if (!response.ok) {
-                throw new Error("Couldn't get recent conversations");
-            }
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error(error);
+            const res = await fetch('/Messaging/GetRecentConversations');
+            if (!res.ok) throw new Error("Couldn't get recent conversations");
+            return await res.json();
+        } catch (e) {
+            console.error(e);
             return [];
         }
     }
 
     async function pollGlobalUnreadBadge() {
-        try {
-            const recentConversations = await fetchRecentConversations();
-            updateGlobalUnreadBadge(recentConversations);
-        } catch (e) {
-            console.error(e);
+        const recentConversations = await fetchRecentConversations();
+        updateGlobalUnreadBadge(recentConversations);
+
+        // If the window is open, refresh the list too
+        const chatWindow = document.querySelector(".chat-window");
+        if (chatWindow && chatWindow.style.display !== "none") {
+            const activeChatsDiv = document.querySelector(".active-chats");
+            activeChatsDiv.innerHTML = "";
+            recentConversations.forEach(conversation => {
+                const date = new Date(conversation.lastMessageTimestamp);
+                const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+                const badge = conversation.missedCount > 0
+                    ? `<span class="badge bg-danger ms-2">${conversation.missedCount}</span>` : "";
+                const messageText = conversation.missedCount > 0
+                    ? `<b>${conversation.lastMessage ?? ""}</b>`
+                    : (conversation.lastMessage ?? "");
+
+                const content = `
+                    <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}">
+                        <div class="conversation">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h4>${conversation.student.name}${badge}</h4>
+                                <span>${time}</span>
+                            </div>
+                            <p>${messageText}</p>
+                        </div>
+                    </a>`;
+                activeChatsDiv.insertAdjacentHTML("beforeend", content);
+            });
         }
     }
-    setInterval(pollGlobalUnreadBadge, 30000);
 
+    (function ensureSignalRAndWire() {
+        if (window.__globalChatWidgetWired) return;
+        window.__globalChatWidgetWired = true;
+
+        function wireHandlers(conn) {
+            // Throttle refresh bursts to once per ~800ms
+            let last = 0, queued = false;
+            const throttledRefresh = async () => {
+                const now = Date.now();
+                if (now - last > 800) {
+                    last = now;
+                    await pollGlobalUnreadBadge();
+                } else if (!queued) {
+                    queued = true;
+                    setTimeout(async () => { queued = false; last = Date.now(); await pollGlobalUnreadBadge(); }, 820);
+                }
+            };
+
+            // The server calls this on new messages / edits / read receipts
+            conn.on("UpdateConversations", throttledRefresh);
+        }
+
+        async function startConnection() {
+            try {
+                if (!window.globalHubConnection) {
+                    window.globalHubConnection = new signalR.HubConnectionBuilder()
+                        .withUrl("/chatHub")
+                        .withAutomaticReconnect()
+                        .build();
+                    wireHandlers(window.globalHubConnection);
+                }
+                if (window.globalHubConnection.state === "Disconnected") {
+                    await window.globalHubConnection.start();
+                }
+            } catch (err) {
+                console.error("SignalR start failed; polling will cover:", err);
+            }
+        }
+
+        // Load SignalR script if missing, then start the connection
+        function loadSignalRIfNeeded(cb) {
+            if (typeof signalR !== "undefined") { cb(); return; }
+            const s = document.createElement("script");
+            s.src = "https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js";
+            s.onload = cb;
+            s.onerror = () => console.warn("Failed to load SignalR; fallback to polling only.");
+            document.head.appendChild(s);
+        }
+
+        loadSignalRIfNeeded(startConnection);
+    })();
+
+    // fallback
+    setInterval(pollGlobalUnreadBadge, 30000);
     pollGlobalUnreadBadge();
 </script>

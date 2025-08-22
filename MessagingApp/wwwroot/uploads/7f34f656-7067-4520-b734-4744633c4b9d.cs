@@ -35,28 +35,22 @@ namespace MessagingApp.Hubs
             var newMessage = new Message
             {
                 SenderId = senderId,
-                ReceiverId = 0, 
-                Content = message ?? string.Empty,
+                ReceiverId = 0,
+                Content = message,
                 CreatedTimestamp = DateTime.Now,
                 Timestamp = DateTime.Now,
                 ConversationId = conversationId,
-                IsRead = false
+                IsRead = false // Ensure message is unread by default
             };
 
             _context.Messages.Add(newMessage);
             await _context.SaveChangesAsync();
 
-            // changed to always send 6 args: last one is attachmentUrl (null for text-only hub sends)
+            // Broadcast new message
             await Clients.Group("conversation_" + conversationId)
-                .SendAsync("ReceiveMessage",
-                    senderId,
-                    senderName,
-                    newMessage.Content,
-                    newMessage.Timestamp.ToShortTimeString(),
-                    newMessage.Id,
-                    null // attachmentUrl slot reserved, keeps shape identical to controller broadcast
-                );
+                .SendAsync("ReceiveMessage", senderId, senderName, message, newMessage.Timestamp.ToShortTimeString(), newMessage.Id);
 
+            // Notify unread messages for real-time UI updates
             await Clients.All.SendAsync("UpdateConversations");
         }
 

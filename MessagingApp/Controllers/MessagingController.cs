@@ -1,46 +1,49 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using MessagingApp.Data;
+using MessagingApp.Hubs;
 using MessagingApp.Models;
+using MessagingApp.Services;
 using System;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace MessagingApp.Controllers
 {
     /// <summary>
     /// MessagingController handles the display and sending of messages for distinct conversations.
-    /// It now uses the Conversations table to group messages between two users.
+    /// It now groups messages and pushes them in real time via SignalR.
     /// </summary>
     [Authorize]
     public class MessagingController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly IFileStorageService _fileStorage;
+        private readonly IHubContext<ChatHub> _hub;
 
-        public MessagingController(AppDbContext context)
+        public MessagingController(
+            AppDbContext context,
+            IFileStorageService fileStorage,
+            IHubContext<ChatHub> hub // injected for real-time pushes
+        )
         {
             _context = context;
+            _fileStorage = fileStorage;
+            _hub = hub;
         }
 
         /// <summary>
         /// Displays the messaging page for the selected student.
-        /// Retrieves the conversation between the logged-in user and the selected student
-        /// loads messages for that conversation ordered by timestamp.
         /// </summary>
-        /// <param name="studentId">The ID of the selected student</param>
-        /// <param name="studentName">The full name of the selected student</param>
-        /// <returns>The messaging view with messages for the conversation</returns>
         public async Task<IActionResult> Index(int studentId, string studentName)
         {
-            // Get logged-in user's ID from claims.
             int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
-
-            // Get or create a conversation between the logged-in user and the selected student.
             var conversation = await GetOrCreateConversationAsync(loggedInUserId, studentId);
 
-            // Update LastRead for the logged-in user to now (marking messages as read)
             var participant = conversation.Participants.FirstOrDefault(p => p.UserId == loggedInUserId);
             if (participant != null)
             {
@@ -48,13 +51,11 @@ namespace MessagingApp.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // Retrieve messages for this conversation, ordered by the original send time.
             var messages = await _context.Messages
                 .Where(m => m.ConversationId == conversation.ConversationId)
                 .OrderBy(m => m.CreatedTimestamp)
                 .ToListAsync();
 
-            // Build a dictionary mapping sender IDs to names for display.
             var senderIds = messages.Select(m => m.SenderId).Distinct().ToList();
             var userNames = await _context.Users
                 .Where(u => senderIds.Contains(u.UserId))
@@ -68,50 +69,79 @@ namespace MessagingApp.Controllers
         }
 
         /// <summary>
-        /// Adds a new message to the current conversation and refreshes the messaging view.
+        /// Handles form POST for a new message and optional file attachment.
+        /// Saves to DB, uploads file locally, then broadcasts via SignalR.
         /// </summary>
-        /// <param name="studentId">The ID of the selected student (chat partner)</param>
-        /// <param name="content">The message content</param>
-        /// <param name="studentName">The full name of the selected student</param>
-        /// <param name="conversationId">The ConversationId of the current chat</param>
-        /// <returns>Redirects to the messaging view for the conversation</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddMessage(int studentId, string content, string studentName, int conversationId)
+        public async Task<IActionResult> AddMessage(
+     int studentId,
+     string content,
+     string studentName,
+     int conversationId,
+     IFormFile? attachment
+ )
         {
-            if (!string.IsNullOrEmpty(content))
+            // Allow: text OR file OR both
+            if (string.IsNullOrWhiteSpace(content) && (attachment == null || attachment.Length == 0))
             {
-                int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
-                var message = new Message
-                {
-                    Content = content,
-                    Timestamp = DateTime.Now,
-                    SenderId = loggedInUserId,
-                    ReceiverId = studentId,
-                    ConversationId = conversationId
-                };
-                _context.Messages.Add(message);
-                await _context.SaveChangesAsync();
+                return BadRequest("No content or attachment provided.");
             }
-            return RedirectToAction("Index", new { studentId, studentName });
+
+            int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
+
+            var message = new Message
+            {
+                // Ensure Content is never null (helps with non-null DB columns and simple UI checks)
+                Content = content ?? string.Empty,
+                Timestamp = DateTime.Now,
+                CreatedTimestamp = DateTime.Now,   
+                SenderId = loggedInUserId,
+                ReceiverId = studentId,
+                ConversationId = conversationId,
+                IsRead = false
+            };
+
+            if (attachment != null && attachment.Length > 0)
+            {
+                using var stream = attachment.OpenReadStream();
+                message.AttachmentUrl = await _fileStorage.UploadAsync(stream, attachment.FileName);
+            }
+
+            _context.Messages.Add(message);
+            await _context.SaveChangesAsync();
+
+            // Standardize the broadcast SHAPE so the client can always rely on arg positions:
+            await _hub.Clients
+                .Group($"conversation_{conversationId}")
+                .SendAsync("ReceiveMessage",
+                    message.SenderId,
+                    User.Identity!.Name,
+                    message.Content,
+                    message.Timestamp.ToShortTimeString(),
+                    message.Id,
+                    message.AttachmentUrl
+                );
+
+            // Keep the sidebar badges/lists fresh
+            await _hub.Clients.All.SendAsync("UpdateConversations");
+
+            return Ok(new { messageId = message.Id });
         }
 
+
         /// <summary>
-        /// Retrieves an existing conversation between two users or creates a new one if none exists.
-        /// This method ensures that each one-to-one chat has a unique ConversationId.
+        /// Ensures a two-user conversation exists, creating if necessary.
         /// </summary>
-        /// <param name="userA">The logged-in user's ID</param>
-        /// <param name="userB">The selected student's user ID</param>
-        /// <returns>A Conversation object representing the private chat</returns>
         private async Task<Conversation> GetOrCreateConversationAsync(int userA, int userB)
         {
-            // Look for an existing conversation that has exactly these two participants.
             var conversation = await _context.Conversations
                 .Include(c => c.Participants)
                 .FirstOrDefaultAsync(c =>
                     c.Participants.Count == 2 &&
                     c.Participants.Any(p => p.UserId == userA) &&
-                    c.Participants.Any(p => p.UserId == userB));
+                    c.Participants.Any(p => p.UserId == userB)
+                );
 
             if (conversation == null)
             {
@@ -119,21 +149,21 @@ namespace MessagingApp.Controllers
                 _context.Conversations.Add(conversation);
                 await _context.SaveChangesAsync();
 
-                // Add both users as participants.
-                var participantA = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userA, LastRead = DateTime.Now };
-                var participantB = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userB, LastRead = DateTime.Now };
-                _context.ConversationParticipants.AddRange(participantA, participantB);
+                var pa = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userA, LastRead = DateTime.Now };
+                var pb = new ConversationParticipant { ConversationId = conversation.ConversationId, UserId = userB, LastRead = DateTime.Now };
+                _context.ConversationParticipants.AddRange(pa, pb);
                 await _context.SaveChangesAsync();
             }
             return conversation;
         }
 
+        /// <summary>
+        /// Returns recent conversations for the current user.
+        /// </summary>
         //Get recent conversations for chat window in course selection
         public async Task<IActionResult> GetRecentConversations(int excludeConversationId = 0)
         {
             int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
-            // Get recent conversations and optionally filter out the current one.
-
             var conversations = await (
                 from c in _context.Conversations
                 where c.Participants.Any(p => p.UserId == loggedInUserId) && c.Messages.Any()
@@ -142,22 +172,25 @@ namespace MessagingApp.Controllers
                 select new
                 {
                     c.ConversationId,
-                    LastMessage = lastMsg.Content,
+                    LastMessage = lastMsg.Content,                 // raw text (may be "")
                     LastMessageTimestamp = lastMsg.Timestamp,
-                    LastMessageSenderId = lastMsg.SenderId,  
+                    LastMessageSenderId = lastMsg.SenderId,
+                    // New: attachment flags for UI
+                    HasAttachment = !string.IsNullOrEmpty(lastMsg.AttachmentUrl),
+                    IsFileOnly = !string.IsNullOrEmpty(lastMsg.AttachmentUrl) && string.IsNullOrWhiteSpace(lastMsg.Content),
+
                     missedCount = c.Messages.Count(m =>
                         m.Timestamp > c.Participants.FirstOrDefault(p => p.UserId == loggedInUserId).LastRead
                         && m.SenderId != loggedInUserId),
+
                     Student = c.Participants
                                 .Where(p => p.UserId != loggedInUserId)
-                                .Select(p => new {
-                                    p.User.UserId,
-                                    p.User.Name
-                                })
+                                .Select(p => new { p.User.UserId, p.User.Name })
                                 .FirstOrDefault()
                 }
-            ).OrderByDescending(c => c.LastMessageTimestamp)
-             .ToListAsync();
+            )
+            .OrderByDescending(c => c.LastMessageTimestamp)
+            .ToListAsync();
 
             return Json(conversations);
         }

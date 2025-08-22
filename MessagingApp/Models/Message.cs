@@ -20,5 +20,8 @@
         // Sender and Receiver IDs.
         public int SenderId { get; set; }
         public int ReceiverId { get; set; }
+
+        public string? AttachmentUrl { get; set; }
+
     }
 }
