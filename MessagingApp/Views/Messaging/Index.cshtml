@@ -6,7 +6,9 @@
     string loggedInUserName = User.Identity.Name;
     string studentName = ViewBag.StudentName as string;
     int conversationId = (int)ViewBag.ConversationId;
+    ViewData["Title"] = "Messaging"; // for layout title
 }
+
 <div class="container-fluid">
     <div class="row">
         <!-- Sidebar for Active Conversations -->
@@ -14,18 +16,11 @@
             @Html.Partial("_ConversationList")
         </div>
 
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="utf-8" />
-            <title>Messaging - MessagingApp</title>
-            <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        </head>
-        <body>
+        <!-- Main Messaging Panel -->
+        <div class="col-md-9">
             <div class="message-container">
                 <h2 class="message-header-title">Messaging with @studentName</h2>
+
                 <div class="message-list" id="messageList">
                     @{
                         var lastSentMessageId = Model
@@ -34,6 +29,7 @@
                         .Select(m => m.Id)
                         .FirstOrDefault();
                     }
+
                     @if (Model != null && Model.Any())
                     {
                         foreach (var message in Model.Reverse())
@@ -44,19 +40,20 @@
                             ? System.IO.Path.GetExtension(message.AttachmentUrl).ToLowerInvariant()
                             : null;
                             var imgExts = new[] { ".png", ".jpg", ".jpeg", ".gif" };
+
                             <div class="message-wrapper @(isSentByUser ? "sent" : "received") @(hasAttachment && string.IsNullOrWhiteSpace(message.Content) ? "file-only" : "")"
                                  data-message-id="@message.Id">
                                 <div class="message-header">
                                     <small class="message-info">
                                         @(userNames.ContainsKey(message.SenderId)
-                                            ? userNames[message.SenderId]
-                                            : "Unknown")
-                                        - @message.Timestamp.ToShortTimeString()
-                                        @Html.Raw(message.IsEdited
-                                                 ? " <span class=\"edited-label\">(edited)</span>"
-                                                 : "")
-                                    </small>
-                                    @if (isSentByUser)
+                                                                        ? userNames[message.SenderId]
+                                                                        : "Unknown")
+                                                                                    - @message.Timestamp.ToShortTimeString()
+                                                                                    @Html.Raw(message.IsEdited
+                                                                        ? " <span class=\"edited-label\">(edited)</span>"
+                                                                        : "")
+                            </small>
+                            @if (isSentByUser)
                                     {
                                         <div class="message-actions">
                                             <i class="fas fa-edit edit-icon" title="Edit"></i>
@@ -64,6 +61,7 @@
                                         </div>
                                     }
                                 </div>
+
                                 <div class="message @(isSentByUser ? "sent-message" : "received-message")">
                                     @message.Content
 
@@ -86,6 +84,7 @@
                                         </div>
                                     }
                                 </div>
+
                                 @if (isSentByUser && message.Id == lastSentMessageId)
                                 {
                                     <div class="message-checkmark">
@@ -106,6 +105,8 @@
                         <p>No messages available.</p>
                     }
                 </div>
+
+                <!-- Message Input Form -->
                 <form class="add-message-form" id="messageForm" method="post"
                       asp-action="AddMessage" asp-controller="Messaging"
                       enctype="multipart/form-data">
@@ -132,6 +133,7 @@
                     </div>
                 </form>
 
+                <!-- Confirm Delete Modal -->
                 <div class="modal-overlay" id="confirmModal">
                     <div class="modal-content">
                         <h2>Confirm Deletion</h2>
@@ -140,6 +142,16 @@
                         <button class="btn-cancel" id="cancelDeleteBtn">Cancel</button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- SignalR and Icons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
 
                 <script>
                     window.loggedInUserId = @loggedInUserId;
@@ -400,5 +412,4 @@
                         });
                     });
                 </script>
-        </body>
-    </html>
+      }
