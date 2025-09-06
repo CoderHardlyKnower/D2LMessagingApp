@@ -9,12 +9,69 @@
     ViewData["Title"] = "Messaging"; // for layout title
 }
 
+@section Styles {
+    <link rel="stylesheet"
+          href="~/css/mobile.css"
+          asp-append-version="true"
+          media="(max-width: 800px)" />
+
+    <!-- Offcanvas safety overrides so the partial works inside the drawer on mobile.
+         I did not edit the partial; these rules neutralize its fixed layout & display toggles. -->
+    <style>
+        @@media (max-width: 800px) {
+            #convoDrawer .conversation-list-container, .offcanvas .conversation-list-container
+
+        {
+            display: block !important;
+            position: static !important;
+            width: 100% !important;
+            left: auto !important;
+            top: auto !important;
+            bottom: auto !important;
+            border-right: 0 !important;
+            padding: 12px !important;
+            background: #fff !important;
+            z-index: auto !important;
+        }
+        #convoDrawer .conversation-widget,
+        .offcanvas .conversation-widget {
+            display: none !important;
+        }
+
+        }
+    </style>
+}
+
+<!-- Mobile: hamburger to open conversation drawer -->
+<button type="button"
+        class="btn btn-outline-secondary d-inline d-md-none position-fixed top-0 start-0 m-2 z-3"
+        data-bs-toggle="offcanvas"
+        data-bs-target="#convoDrawer"
+        aria-controls="convoDrawer"
+        aria-label="Open conversations">
+    <i class="bi bi-list"></i> @* uses Bootstrap Icons already in _Layout *@
+</button>
+
+<!-- Offcanvas (mobile conversation list) -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="convoDrawer" aria-labelledby="convoDrawerLabel" data-bs-scroll="true">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="convoDrawerLabel">Conversations</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-0" id="convoDrawerBody">
+    </div>
+</div>
+
+<div id="messagingRoot">
 <div class="container-fluid">
     <div class="row">
         <!-- Sidebar for Active Conversations -->
-        <div class="col-md-3">
-            @Html.Partial("_ConversationList")
+        <div class="col-md-3" id="desktopConversationList">
+            <div id="conversationListRoot" class="conversation-list-container">
+                @Html.Partial("_ConversationList")
+            </div>
         </div>
+
 
         <!-- Main Messaging Panel -->
         <div class="col-md-9">
@@ -132,7 +189,7 @@
                         </button>
                     </div>
                 </form>
-
+                </div>
                 <!-- Confirm Delete Modal -->
                 <div class="modal-overlay" id="confirmModal">
                     <div class="modal-content">
@@ -151,265 +208,300 @@
     <!-- SignalR and Icons -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="~/js/mobile.js" asp-append-version="true" defer></script>
 
 
-                <script>
-                    window.loggedInUserId = @loggedInUserId;
-                    let pendingDeleteMessageId = null;
 
-                    window.onload = () =>
-                        document.getElementById("messageList").scrollTop = 0;
+    <script>
+        window.loggedInUserId = @loggedInUserId;
+        let pendingDeleteMessageId = null;
 
-                    const connection = new signalR.HubConnectionBuilder()
-                        .withUrl("/chatHub")
-                        .build();
+        window.onload = () =>
+            document.getElementById("messageList").scrollTop = 0;
 
-                    connection.start().then(() => {
-                        connection.invoke("JoinConversation", @conversationId);
-                        connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId);
-                    });
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .build();
 
-                    connection.on("ReceiveMessage", (senderId, senderName, message, timestamp, messageId, attachmentUrl) => {
-                        const messageList = document.getElementById("messageList");
-                        messageList.querySelector("p")?.remove();
+        connection.start().then(() => {
+            connection.invoke("JoinConversation", @conversationId);
+            connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId);
+        });
 
-                        const isSentByUser = senderId == @loggedInUserId;
-                        const wrapper = document.createElement("div");
-                        wrapper.className = "message-wrapper " + (isSentByUser ? "sent" : "received");
-                        wrapper.setAttribute("data-message-id", messageId);
+        connection.on("ReceiveMessage", (senderId, senderName, message, timestamp, messageId, attachmentUrl) => {
+            const messageList = document.getElementById("messageList");
+            messageList.querySelector("p")?.remove();
 
-                        if (!message.trim() && attachmentUrl) {
-                            wrapper.classList.add("file-only");
-                        }
+            const isSentByUser = senderId == @loggedInUserId;
+            const wrapper = document.createElement("div");
+            wrapper.className = "message-wrapper " + (isSentByUser ? "sent" : "received");
+            wrapper.setAttribute("data-message-id", messageId);
 
-                        let header = `<div class="message-header">
-                                            <small class="message-info">${senderName} - ${timestamp}</small>`;
-                        if (isSentByUser) {
-                            header += `<div class="message-actions">
-                                                <i class="fas fa-edit edit-icon" title="Edit"></i>
-                                                <i class="fas fa-trash delete-icon" title="Delete"></i>
-                                            </div>`;
-                        }
-                        header += `</div>`;
+            if (!message.trim() && attachmentUrl) {
+                wrapper.classList.add("file-only");
+            }
 
-                        let body = `<div class="message ${isSentByUser ? "sent-message" : "received-message"}">${message}`;
-                        if (attachmentUrl) {
-                            const ext = attachmentUrl.split('.').pop().toLowerCase();
-                            const imgExts = ["png", "jpg", "jpeg", "gif"];
-                            if (imgExts.includes(ext)) {
-                                body += `<div class="attachment mt-2">
-                                                    <a href="${attachmentUrl}" target="_blank">
-                                                        <img src="${attachmentUrl}" class="attachment-thumb" />
-                                                    </a>
-                                                </div>`;
-                            } else {
-                                const name = attachmentUrl.split('/').pop();
-                                body += `<div class="attachment mt-2">
-                                                    <a href="${attachmentUrl}" target="_blank">
-                                                        <i class="fas fa-paperclip"></i> ${name}
-                                                    </a>
-                                                </div>`;
-                            }
-                        }
-                        body += `</div>`;
+            let header = `<div class="message-header">
+                                <small class="message-info">${senderName} - ${timestamp}</small>`;
+            if (isSentByUser) {
+                header += `<div class="message-actions">
+                                    <i class="fas fa-edit edit-icon" title="Edit"></i>
+                                    <i class="fas fa-trash delete-icon" title="Delete"></i>
+                                </div>`;
+            }
+            header += `</div>`;
 
-                        wrapper.innerHTML = header + body;
-                        messageList.insertBefore(wrapper, messageList.firstChild);
-                        setTimeout(() => messageList.scrollTop = 0, 10);
+            let body = `<div class="message ${isSentByUser ? "sent-message" : "received-message"}">${message}`;
+            if (attachmentUrl) {
+                const ext = attachmentUrl.split('.').pop().toLowerCase();
+                const imgExts = ["png", "jpg", "jpeg", "gif"];
+                if (imgExts.includes(ext)) {
+                    body += `<div class="attachment mt-2">
+                                        <a href="${attachmentUrl}" target="_blank">
+                                            <img src="${attachmentUrl}" class="attachment-thumb" />
+                                        </a>
+                                    </div>`;
+                } else {
+                    const name = attachmentUrl.split('/').pop();
+                    body += `<div class="attachment mt-2">
+                                        <a href="${attachmentUrl}" target="_blank">
+                                            <i class="fas fa-paperclip"></i> ${name}
+                                        </a>
+                                    </div>`;
+                }
+            }
+            body += `</div>`;
 
-                        if (!isSentByUser) {
-                            connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
-                                .catch(err => console.error(err));
-                        } else {
-                            document.querySelectorAll(".message-checkmark").forEach(el => el.remove());
-                            const check = document.createElement("div");
-                            check.className = "message-checkmark";
-                            check.innerHTML = '<i class="fas fa-check-circle"></i>';
-                            wrapper.querySelector(".sent-message")
-                                .parentNode.insertBefore(check, wrapper.querySelector(".sent-message").nextSibling);
-                        }
-                    });
+            wrapper.innerHTML = header + body;
+            messageList.insertBefore(wrapper, messageList.firstChild);
+            setTimeout(() => messageList.scrollTop = 0, 10);
 
-                    document.getElementById("fileInput").addEventListener("change", function () {
-                        const preview = document.getElementById("filePreview");
-                        preview.innerHTML = "";
-                        const file = this.files[0];
-                        if (!file) return;
-                        const allowed = ["pdf", "png", "jpg", "jpeg", "gif"];
-                        const ext = file.name.split('.').pop().toLowerCase();
-                        if (!allowed.includes(ext)) {
-                            alert("Unsupported file type. Please select PDF or an image.");
-                            this.value = "";
-                            return;
-                        }
-                        if (["png", "jpg", "jpeg", "gif"].includes(ext)) {
-                            const reader = new FileReader();
-                            reader.onload = e => {
-                                const img = document.createElement("img");
-                                img.src = e.target.result;
-                                img.className = "preview-thumb";
-                                img.onclick = () => window.open(img.src, "_blank");
-                                preview.appendChild(img);
-                            };
-                            reader.readAsDataURL(file);
-                        } else {
-                            const nameDiv = document.createElement("div");
-                            nameDiv.textContent = file.name;
-                            nameDiv.className = "preview-filename";
-                            preview.appendChild(nameDiv);
-                        }
-                    });
+            if (!isSentByUser) {
+                connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
+                    .catch(err => console.error(err));
+            } else {
+                document.querySelectorAll(".message-checkmark").forEach(el => el.remove());
+                const check = document.createElement("div");
+                check.className = "message-checkmark";
+                check.innerHTML = '<i class="fas fa-check-circle"></i>';
+                wrapper.querySelector(".sent-message")
+                    .parentNode.insertBefore(check, wrapper.querySelector(".sent-message").nextSibling);
+            }
+        });
 
-                    document.getElementById("messageForm").addEventListener("submit", function (e) {
-                        e.preventDefault();
-                        cancelActiveEdits();
-                        const content = document.getElementById("contentInput").value.trim();
-                        const hasFile = document.getElementById("fileInput").files.length > 0;
-                        if (!content && !hasFile) return;
-                        const data = new FormData(this);
-                        fetch(this.action, { method: 'POST', body: data })
-                            .catch(err => console.error("SendMessage error:", err));
-                        document.getElementById("contentInput").value = "";
-                        document.getElementById("fileInput").value = "";
-                        document.getElementById("filePreview").innerHTML = "";
-                    });
+        document.getElementById("fileInput").addEventListener("change", function () {
+            const preview = document.getElementById("filePreview");
+            preview.innerHTML = "";
+            const file = this.files[0];
+            if (!file) return;
+            const allowed = ["pdf", "png", "jpg", "jpeg", "gif"];
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!allowed.includes(ext)) {
+                alert("Unsupported file type. Please select PDF or an image.");
+                this.value = "";
+                return;
+            }
+            if (["png", "jpg", "jpeg", "gif"].includes(ext)) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement("img");
+                    img.src = e.target.result;
+                    img.className = "preview-thumb";
+                    img.onclick = () => window.open(img.src, "_blank");
+                    preview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                const nameDiv = document.createElement("div");
+                nameDiv.textContent = file.name;
+                nameDiv.className = "preview-filename";
+                preview.appendChild(nameDiv);
+            }
+        });
 
-                    connection.on("UpdateConversations", () => {
-                        if (typeof updateConversations === "function") updateConversations();
-                    });
+        document.getElementById("messageForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            cancelActiveEdits();
+            const content = document.getElementById("contentInput").value.trim();
+            const hasFile = document.getElementById("fileInput").files.length > 0;
+            if (!content && !hasFile) return;
+            const data = new FormData(this);
+            fetch(this.action, { method: 'POST', body: data })
+                .catch(err => console.error("SendMessage error:", err));
+            document.getElementById("contentInput").value = "";
+            document.getElementById("fileInput").value = "";
+            document.getElementById("filePreview").innerHTML = "";
+        });
 
-                    function cancelActiveEdits() {
-                        document.querySelectorAll(".message-wrapper input[type='text']").forEach(input => {
-                            const pd = input.parentElement;
-                            pd.innerText = pd.dataset.originalText || input.value;
-                        });
-                    }
+        connection.on("UpdateConversations", () => {
+            if (typeof updateConversations === "function") updateConversations();
+        });
 
-                    document.getElementById("messageList").addEventListener("click", function (e) {
-                        const t = e.target, wrap = t.closest(".message-wrapper");
-                        if (!wrap) return;
-                        const msgId = +wrap.dataset.messageId;
+        function cancelActiveEdits() {
+            document.querySelectorAll(".message-wrapper input[type='text']").forEach(input => {
+                const pd = input.parentElement;
+                pd.innerText = pd.dataset.originalText || input.value;
+            });
+        }
 
-                        if (t.classList.contains("delete-icon")) {
-                            pendingDeleteMessageId = msgId;
-                            document.getElementById("confirmModal").style.display = "flex";
-                        }
-                        if (t.classList.contains("edit-icon")) {
-                            const md = wrap.querySelector(".message");
-                            const orig = md.innerText;
-                            if (md.querySelector("input")) return;
-                            const inp = document.createElement("input");
-                            inp.type = "text"; inp.value = orig; inp.style.width = "80%";
-                            md.dataset.originalText = orig; md.innerHTML = ""; md.appendChild(inp); inp.focus();
-                            let saved = false;
-                            function save() {
-                                const v = inp.value.trim();
-                                if (!v || v === orig) return cancel();
-                                saved = true; inp.removeEventListener("blur", blur);
-                                connection.invoke("EditMessage", msgId, v).catch(console.error);
-                            }
-                            function cancel() { md.innerText = orig; }
-                            function blur() { setTimeout(() => !saved && cancel(), 300); }
-                            inp.addEventListener("keydown", e => {
-                                if (e.key === "Enter") { e.preventDefault(); save(); inp.blur(); }
-                                if (e.key === "Escape") { e.preventDefault(); cancel(); }
-                            });
-                            inp.addEventListener("blur", blur);
-                            const ok = document.createElement("i"), no = document.createElement("i");
-                            ok.className = "fas fa-check"; ok.title = "Save"; ok.style.cursor = "pointer";
-                            no.className = "fas fa-times"; no.title = "Cancel"; no.style.cursor = "pointer";
-                            md.appendChild(ok); md.appendChild(no);
-                            ok.addEventListener("click", save);
-                            no.addEventListener("click", cancel);
-                        }
-                    });
+        document.getElementById("messageList").addEventListener("click", function (e) {
+            const t = e.target, wrap = t.closest(".message-wrapper");
+            if (!wrap) return;
+            const msgId = +wrap.dataset.messageId;
 
-                    document.getElementById("confirmDeleteBtn").addEventListener("click", () => {
-                        if (pendingDeleteMessageId != null) {
-                            connection.invoke("DeleteMessage", pendingDeleteMessageId).catch(console.error);
-                            document.getElementById("confirmModal").style.display = "none";
-                            pendingDeleteMessageId = null;
-                        }
-                    });
-                    document.getElementById("cancelDeleteBtn").addEventListener("click", () => {
-                        document.getElementById("confirmModal").style.display = "none";
-                        pendingDeleteMessageId = null;
-                    });
+            if (t.classList.contains("delete-icon")) {
+                pendingDeleteMessageId = msgId;
+                document.getElementById("confirmModal").style.display = "flex";
+            }
+            if (t.classList.contains("edit-icon")) {
+                const md = wrap.querySelector(".message");
+                const orig = md.innerText;
+                if (md.querySelector("input")) return;
+                const inp = document.createElement("input");
+                inp.type = "text"; inp.value = orig; inp.style.width = "80%";
+                md.dataset.originalText = orig; md.innerHTML = ""; md.appendChild(inp); inp.focus();
+                let saved = false;
+                function save() {
+                    const v = inp.value.trim();
+                    if (!v || v === orig) return cancel();
+                    saved = true; inp.removeEventListener("blur", blur);
+                    connection.invoke("EditMessage", msgId, v).catch(console.error);
+                }
+                function cancel() { md.innerText = orig; }
+                function blur() { setTimeout(() => !saved && cancel(), 300); }
+                inp.addEventListener("keydown", e => {
+                    if (e.key === "Enter") { e.preventDefault(); save(); inp.blur(); }
+                    if (e.key === "Escape") { e.preventDefault(); cancel(); }
+                });
+                inp.addEventListener("blur", blur);
+                const ok = document.createElement("i"), no = document.createElement("i");
+                ok.className = "fas fa-check"; ok.title = "Save"; ok.style.cursor = "pointer";
+                no.className = "fas fa-times"; no.title = "Cancel"; no.style.cursor = "pointer";
+                md.appendChild(ok); md.appendChild(no);
+                ok.addEventListener("click", save);
+                no.addEventListener("click", cancel);
+            }
+        });
 
-                    connection.on("MessageRead", (id, rt) => {
-                        document.querySelectorAll(".read-receipt").forEach(el => el.remove());
-                        const w = document.querySelector(`[data-message-id='${id}']`);
-                        if (w?.classList.contains("sent")) {
-                            const sm = w.querySelector(".sent-message");
-                            const rc = document.createElement("div");
-                            rc.className = "read-receipt"; rc.innerText = `Read ${rt}`;
-                            sm.parentNode.insertBefore(rc, sm.nextSibling);
-                        }
-                    });
+        document.getElementById("confirmDeleteBtn").addEventListener("click", () => {
+            if (pendingDeleteMessageId != null) {
+                connection.invoke("DeleteMessage", pendingDeleteMessageId).catch(console.error);
+                document.getElementById("confirmModal").style.display = "none";
+                pendingDeleteMessageId = null;
+            }
+        });
+        document.getElementById("cancelDeleteBtn").addEventListener("click", () => {
+            document.getElementById("confirmModal").style.display = "none";
+            pendingDeleteMessageId = null;
+        });
 
-                                      connection.on("MessageEdited", (id, newC, ts) => {
-                        const w = document.querySelector(`[data-message-id='${id}']`);
-                        if (!w) return;
+        connection.on("MessageRead", (id, rt) => {
+            document.querySelectorAll(".read-receipt").forEach(el => el.remove());
+            const w = document.querySelector(`[data-message-id='${id}']`);
+            if (w?.classList.contains("sent")) {
+                const sm = w.querySelector(".sent-message");
+                const rc = document.createElement("div");
+                rc.className = "read-receipt"; rc.innerText = `Read ${rt}`;
+                sm.parentNode.insertBefore(rc, sm.nextSibling);
+            }
+        });
 
-                        const body = w.querySelector(".message");
-                        if (!body) return;
+                          connection.on("MessageEdited", (id, newC, ts) => {
+            const w = document.querySelector(`[data-message-id='${id}']`);
+            if (!w) return;
 
-                        // Preserve any attachment block
-                        const attachment = body.querySelector(".attachment");
-                        body.innerHTML = ""; 
-                        const textNode = document.createTextNode(newC);
-                        body.appendChild(textNode);
-                        if (attachment) body.appendChild(attachment);
+            const body = w.querySelector(".message");
+            if (!body) return;
 
-                        // Update header timestamp + edited label
-                        const info = w.querySelector(".message-info");
-                        if (info) {
-                            const nameOnly = info.innerText.split("-")[0].trim();
-                            info.innerHTML = `${nameOnly} - ${ts} <span class="edited-label">(edited)</span>`;
-                        }
-                    });
+            // Preserve any attachment block
+            const attachment = body.querySelector(".attachment");
+            body.innerHTML = "";
+            const textNode = document.createTextNode(newC);
+            body.appendChild(textNode);
+            if (attachment) body.appendChild(attachment);
 
-                    connection.on("MessageDeleted", (id) => {
-                        const w = document.querySelector(`[data-message-id='${id}']`);
-                        if (w) {
-                            const ie = w.querySelector(".message-info");
-                            let sn = ie ? ie.innerText.split("-")[0].trim() : "User";
-                            w.innerHTML = `<div class="deleted-message">${sn} deleted a message</div>`;
-                        }
-                    });
+            // Update header timestamp + edited label
+            const info = w.querySelector(".message-info");
+            if (info) {
+                const nameOnly = info.innerText.split("-")[0].trim();
+                info.innerHTML = `${nameOnly} - ${ts} <span class="edited-label">(edited)</span>`;
+            }
+        });
 
-                    document.addEventListener("DOMContentLoaded", () => {
-                        document.querySelectorAll(".message-wrapper").forEach(w => {
-                            w.addEventListener("click", e => {
-                                if (e.target.closest(".message-actions")) return;
-                                document.querySelectorAll(".message-wrapper.show-actions")
-                                    .forEach(x => x !== w && x.classList.remove("show-actions"));
-                                w.classList.toggle("show-actions");
-                            });
-                        });
-                    });
+        connection.on("MessageDeleted", (id) => {
+            const w = document.querySelector(`[data-message-id='${id}']`);
+            if (w) {
+                const ie = w.querySelector(".message-info");
+                let sn = ie ? ie.innerText.split("-")[0].trim() : "User";
+                w.innerHTML = `<div class="deleted-message">${sn} deleted a message</div>`;
+            }
+        });
 
-                    window.addEventListener("focus", () => {
-                        connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
-                            .catch(console.error);
-                    });
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".message-wrapper").forEach(w => {
+                w.addEventListener("click", e => {
+                    if (e.target.closest(".message-actions")) return;
+                    document.querySelectorAll(".message-wrapper.show-actions")
+                        .forEach(x => x !== w && x.classList.remove("show-actions"));
+                    w.classList.toggle("show-actions");
+                });
+            });
+        });
 
-                    const ta = document.getElementById("contentInput");
-                    ta.addEventListener("input", function () {
-                        this.style.height = "auto";
-                        this.style.height = this.scrollHeight + "px";
-                        const lh = parseFloat(getComputedStyle(this).lineHeight);
-                        this.style.overflowY = this.scrollHeight > lh * 4 ? "auto" : "hidden";
-                    });
-                    document.addEventListener("DOMContentLoaded", () => {
-                        const t1 = document.getElementById("contentInput");
-                        t1.addEventListener("keydown", e => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                document.getElementById("messageForm")
-                                    .dispatchEvent(new Event("submit", { cancelable: true }));
-                            }
-                        });
-                    });
-                </script>
-      }
+        window.addEventListener("focus", () => {
+            connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId)
+                .catch(console.error);
+        });
+
+        const ta = document.getElementById("contentInput");
+        ta.addEventListener("input", function () {
+            this.style.height = "auto";
+            this.style.height = this.scrollHeight + "px";
+            const lh = parseFloat(getComputedStyle(this).lineHeight);
+            this.style.overflowY = this.scrollHeight > lh * 4 ? "auto" : "hidden";
+        });
+        document.addEventListener("DOMContentLoaded", () => {
+            const t1 = document.getElementById("contentInput");
+            t1.addEventListener("keydown", e => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    document.getElementById("messageForm")
+                        .dispatchEvent(new Event("submit", { cancelable: true }));
+                }
+            });
+        });
+    </script>
+
+
+    <script>
+        (function () {
+          const desktopSidebar = document.getElementById('desktopConversationList');
+          const drawerBody = document.getElementById('convoDrawerBody');
+          const listRoot = document.getElementById('conversationListRoot');
+          if (!desktopSidebar || !drawerBody || !listRoot) return;
+
+          const mm = window.matchMedia('(max-width: 800px)');
+
+          function move(isMobile) {
+            if (isMobile) {
+              if (!drawerBody.contains(listRoot)) drawerBody.appendChild(listRoot);
+            } else {
+              if (!desktopSidebar.contains(listRoot)) desktopSidebar.appendChild(listRoot);
+            }
+          }
+
+          // Initial placement after DOM is ready
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => move(mm.matches));
+          } else {
+            move(mm.matches);
+          }
+
+          // React to viewport changes
+          const onChange = (e) => move(e.matches);
+          if (mm.addEventListener) mm.addEventListener('change', onChange);
+          else mm.addListener(onChange);
+        })();
+    </script>
+
+}

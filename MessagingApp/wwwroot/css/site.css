@@ -689,6 +689,7 @@ h1 {
 
 
 
+
 /*=============Login Page==================*/
 
 /* Container */
@@ -758,4 +759,39 @@ h1 {
     color: #dc3545;
     font-size: 14px;
     text-align: center;
+}
+
+
+
+/* Keep dropdown caret visible; provide room to the right */
+.navbar .nav-link.dropdown-toggle {
+    padding-right: 1.25rem; /* room for ::after caret */
+}
+
+/* Truncate ONLY the inner text, not the anchor (so caret isn't clipped) */
+.navbar .nav-link .name-clip {
+    display: inline-block;
+    max-width: 55vw; /* adjust to taste (e.g., 50–60vw) */
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* If you also push the user block to the right: */
+.navbar .container-fluid {
+    display: flex;
+    align-items: center;
+}
+
+    .navbar .container-fluid > .d-flex:last-child {
+        margin-left: auto;
+        margin-right: 8px; /* optional breathing room from edge */
+    }
+
+/* Optional tighter cap on very small phones */
+@media (max-width: 540px) {
+    .navbar .nav-link .name-clip {
+        max-width: 50vw;
+    }
 }
