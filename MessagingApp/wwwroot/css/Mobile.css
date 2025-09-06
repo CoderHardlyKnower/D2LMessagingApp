@@ -1,0 +1,360 @@
+﻿
+
+/* -------- Global tokens (tweak here first) -------------------------------- */
+:root {
+    --m-pad: 12px; 
+    --m-gap: 10px; 
+    --m-radius: 12px; 
+    --m-bg: #ffffff; 
+    --m-muted: #f6f7f9; 
+    --m-accent: #0078D4; 
+    --m-accent-dark: #0056b3; 
+    --m-text: #111; 
+    --m-subtle: #666; 
+    --m-safe: env(safe-area-inset-bottom, 0px);
+    --m-top-safe: env(safe-area-inset-top, 0px);
+}
+
+/* -------- Layout safety & ergonomics -------------------------------------- */
+
+body {
+    padding: var(--m-pad);
+    padding-bottom: calc(88px + var(--m-safe)); /* room for composer+safe area */
+    background: #f4f4f9; /* consistent with site.css */
+    overscroll-behavior-y: contain; /* reduce accidental page bounce */
+}
+
+.custom-footer {
+    position: static !important; 
+    box-shadow: none !important;
+    border-top: 1px solid #ddd;
+    margin-top: var(--m-pad);
+}
+
+.conversation-list-container {
+    display: none !important;
+}
+
+
+.message-container {
+    position: absolute !important;
+    top: 100px !important; 
+    bottom: 60px !important; 
+    left: 0;
+    right: 0;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+    padding: var(--m-pad) !important;
+    background: var(--m-bg) !important;
+    box-shadow: none !important;
+    height: auto !important; 
+}
+
+.message-header-title {
+    margin: 0 0 calc(var(--m-pad) * 0.75) 0;
+    padding-top: var(--m-top-safe);
+    font-size: clamp(16px, 4.4vw, 20px);
+    font-weight: 600;
+    color: var(--m-text);
+}
+
+/* -------- Message list: tall, smooth, thumb-friendly ---------------------- */
+
+
+.message-list {
+    background: var(--m-muted) !important;
+    border-radius: var(--m-radius) !important;
+    padding: var(--m-pad) !important;
+    max-height: calc(100dvh - 200px) !important;
+    min-height: 30dvh !important;
+    display: flex !important;
+    flex-direction: column-reverse !important; 
+    gap: calc(var(--m-gap) * 0.75);
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; 
+    overflow-y: auto !important;
+}
+
+/* Message bubble basics: slightly larger and finger-friendly on mobile. */
+.message {
+    font-size: clamp(14px, 3.8vw, 16px);
+    line-height: 1.45;
+    padding: 10px 14px !important;
+    border-radius: 18px !important;
+    max-width: 82% !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+.sent-message,
+.received-message {
+    margin: 0 12px !important;
+}
+
+.message-info {
+    font-size: 12px !important;
+    color: var(--m-subtle) !important;
+    margin: 0 0 4px 8px !important;
+}
+
+.read-receipt {
+    font-size: 11px !important;
+    margin: 4px 10px 0 10px !important;
+}
+
+.attachment-thumb {
+    max-width: 220px !important;
+    max-height: 220px !important;
+    border-radius: 8px !important;
+}
+
+.message-wrapper.file-only .attachment {
+    background: #eceff3 !important;
+    padding: 12px 16px !important;
+    border-radius: 10px !important;
+}
+
+.message-actions {
+    top: -28px !important;
+    right: 2px !important;
+    padding: 4px 6px !important;
+    border-radius: 6px !important;
+}
+
+    .message-actions i {
+        padding: 10px !important; 
+        font-size: 18px !important;
+    }
+
+/* -------- Composer: sticky bottom, safe-area-aware ------------------------ */
+
+.add-message-form {
+    position: sticky !important;
+    bottom: 0 !important;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    background: var(--m-bg) !important;
+    border-top: 1px solid #e5e7eb !important;
+    padding: var(--m-pad) !important;
+    padding-bottom: calc(var(--m-pad) + var(--m-safe)) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: var(--m-gap) !important;
+}
+
+/* Growable textarea w/ 5–6 line cap before it scrolls internally. */
+.message-textarea {
+    width: 100% !important;
+    min-height: 44px !important;
+    max-height: 7.5em !important; 
+    height: auto !important;
+    font-size: 16px !important; 
+    border-radius: 10px !important;
+    border: 2px solid #d0d7de !important;
+    background: #fafafa !important;
+    padding: 10px 12px !important;
+    overflow-y: auto !important;
+}
+
+/* Paperclip + send button spacing and feel. */
+.add-message-form .send-btn {
+    width: 46px !important;
+    height: 46px !important;
+    font-size: 1.15rem !important;
+    background: var(--m-accent) !important;
+}
+
+    .add-message-form .send-btn:hover {
+        background: var(--m-accent-dark) !important;
+    }
+
+/* File preview chips under the textarea—wrap when needed. */
+.file-preview {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+}
+
+/* -------- Typing indicator: sits above composer, left-aligned ------------- */
+
+.typing-indicator {
+    position: sticky;
+    bottom: calc(56px + var(--m-safe)); /* just above composer */
+    left: var(--m-pad);
+    font-size: 12px;
+    color: #777;
+    margin: 6px 0;
+    z-index: 4;
+}
+
+    /* Optional: subtle animated ellipsis feel */
+    .typing-indicator::after {
+        content: "";
+        display: inline-block;
+        width: 1ch;
+        animation: dots 1.2s infinite steps(4, end);
+    }
+
+@keyframes dots {
+    0% {
+        content: "";
+    }
+
+    25% {
+        content: ".";
+    }
+
+    50% {
+        content: "..";
+    }
+
+    75% {
+        content: "...";
+    }
+}
+
+
+#convoDrawer.offcanvas {
+    width: min(86vw, 380px);
+}
+
+#convoDrawer .offcanvas-header {
+    padding: 12px var(--m-pad);
+    border-bottom: 1px solid #eee;
+}
+
+#convoDrawer .offcanvas-body {
+    padding: 0 !important; 
+    background: #fff;
+}
+
+#convoDrawer .list-group-item,
+#convoDrawer .user-container {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px var(--m-pad);
+    border: 0;
+    border-bottom: 1px solid #f2f2f2;
+}
+
+/* -------- Touch ergonomics & typography ----------------------------------- */
+
+html {
+    font-size: 17px; 
+}
+
+button, .btn, .message-actions i, .add-message-form .send-btn {
+    -webkit-tap-highlight-color: transparent; 
+}
+
+/* Minimal focus ring for a11y without heavy glow */
+:focus-visible {
+    outline: 2px solid rgba(0, 120, 212, 0.25);
+    outline-offset: 2px;
+}
+
+
+img {
+    content-visibility: auto; 
+}
+
+/* Smoothen scroll chaining in nested lists on iOS/Android */
+.message-list {
+    overscroll-behavior: contain;
+}
+
+.message-checkmark {
+    right: 6px !important;
+    transform: translate(100%, -40%) !important;
+}
+
+
+
+/* ===== Mobile: header/footer visible; list scrolls; tighter top gap ===== */
+@media (max-width: 800px) {
+    /* Tweak ONLY these if you need more/less space */
+    :root {
+        --headerH: 40px; 
+        --footerH: 70px; 
+        --topGap: 8px; 
+    }
+
+    html, body {
+        height: 100dvh;
+        overflow: hidden !important;
+    }
+
+    body {
+        padding: 0 !important;
+        background: #f4f4f9;
+    }
+
+    .custom-footer {
+        position: fixed !important;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        z-index: 1000;
+    }
+
+    /* Panel fills exactly between header and footer, with a small top gap */
+    #messagingRoot {
+        height: 100dvh;
+        padding-top: calc(var(--headerH) + var(--topGap));
+        padding-bottom: var(--footerH);
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .message-container {
+        height: calc(100dvh - var(--headerH) - var(--footerH) - var(--topGap));
+        width: 100%;
+        max-width: none !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        padding: 12px !important;
+        display: flex !important;
+        flex-direction: column;
+        background: #fff;
+        box-shadow: none !important;
+    }
+
+    /* Only the list scrolls */
+    .message-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        max-height: none !important;
+    }
+
+    /* Composer always visible */
+    .add-message-form {
+        position: static !important; 
+        margin-top: 8px;
+    }
+
+    /* Make sure the textarea never collapses away */
+    .message-textarea {
+        min-height: 44px !important; 
+        max-height: 7.5em !important; 
+        overflow-y: auto !important;
+        font-size: 16px !important; 
+    }
+
+    /* Offcanvas can still scroll */
+    .offcanvas, .offcanvas .offcanvas-body {
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+.btn.position-fixed.top-0.start-0.m-2.z-3 {
+    top: 52px !important; 
+}
