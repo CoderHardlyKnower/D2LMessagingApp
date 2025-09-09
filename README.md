@@ -1,5 +1,7 @@
 # 📚 D2L Real-Time Messaging App
 
+![CI](https://github.com/CoderHardlyKnower/D2LMessagingApp/actions/workflows/ci.yml/badge.svg)
+
 > **ASP.NET Core MVC + SignalR application** that extends a learning management system (D2L/Brightspace) with modern, real-time messaging.  
 > Built as a capstone project and deployed on **Azure PaaS** to demonstrate **cloud-first architecture, CI/CD, and sysadmin discipline**.
 
