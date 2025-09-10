@@ -220,7 +220,7 @@
             document.getElementById("messageList").scrollTop = 0;
 
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/chatHub")
+            .withUrl("/chathub")
             .build();
 
         connection.start().then(() => {

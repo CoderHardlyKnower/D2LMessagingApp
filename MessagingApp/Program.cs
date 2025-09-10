@@ -5,31 +5,27 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using MessagingApp.Models;
 using MessagingApp.Controllers;
 using Azure.Storage.Blobs;
-using MessagingApp.Services;    
-
-
+using MessagingApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
-builder.Services.AddSignalR();
-// Register the Azure BlobServiceClient using your connection string
+
+// File storage service
 //builder.Services.AddSingleton(sp =>
 //    new BlobServiceClient(
 //        builder.Configuration["Azure:StorageConnectionString"]
 //    )
 //);
-//// Register our file storage abstraction
 //builder.Services.AddTransient<IFileStorageService, AzureBlobStorageService>();
 builder.Services.AddTransient<IFileStorageService, LocalFileStorageService>();
-
-
 
 // Configure SQL Server 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Cookie authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -37,13 +33,28 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.LogoutPath = "/Account/Logout";
     });
 
+// Application Insights
+builder.Services.AddApplicationInsightsTelemetry();
+
+// SignalR with fallback for local dev
+var asrs = builder.Configuration.GetConnectionString("AzureSignalR")
+          ?? builder.Configuration["Azure:SignalR:ConnectionString"];
+
+if (!string.IsNullOrWhiteSpace(asrs) && !builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSignalR().AddAzureSignalR(asrs);
+}
+else
+{
+    builder.Services.AddSignalR();
+}
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -58,66 +69,55 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    //context.database.migrate();
-
-    SeedDatabase(context);
-}
-
-app.MapHub<MessagingApp.Hubs.ChatHub>("/chatHub");
+// Map the SignalR hub
+app.MapHub<MessagingApp.Hubs.ChatHub>("/chathub");
 
 app.Run();
 
-//Seed database method
+
+// ---- Seed method (unchanged) ----
 void SeedDatabase(AppDbContext context)
 {
-    // Seed Users if none exist.
     if (!context.Users.Any())
     {
-        context.Users.AddRange(new List<User>
+        context.Users.AddRange(new List<MessagingApp.Models.User>
         {
-            new User("Austin Brown", "Abrown9034@conestogac.on.ca", "password1", "student"),
-            new User("Khemara Oeun", "Koeun8402@conestogac.on.ca", "password2", "student"),
-            new User("Amanda Esteves", "Aesteves3831@conestogac.on.ca", "password3", "student"),
-            new User("Tristan Lagace", "Tlagace9030@conestogac.on.ca", "password4", "student"),
-            new User("Isabella Ramirez", "iramirez@conestogac.on.ca", "password5", "student"),
-            new User("Mohammed Al-Farouq", "maalfarouq@conestogac.on.ca", "password6", "student"),
-            new User("Sienna Nguyen", "snguyen@conestogac.on.ca", "password7", "student"),
-            new User("Diego Morales", "dmorales@conestogac.on.ca", "password8", "student")
+            new MessagingApp.Models.User("Austin Brown", "Abrown9034@conestogac.on.ca", "password1", "student"),
+            new MessagingApp.Models.User("Khemara Oeun", "Koeun8402@conestogac.on.ca", "password2", "student"),
+            new MessagingApp.Models.User("Amanda Esteves", "Aesteves3831@conestogac.on.ca", "password3", "student"),
+            new MessagingApp.Models.User("Tristan Lagace", "Tlagace9030@conestogac.on.ca", "password4", "student"),
+            new MessagingApp.Models.User("Isabella Ramirez", "iramirez@conestogac.on.ca", "password5", "student"),
+            new MessagingApp.Models.User("Mohammed Al-Farouq", "maalfarouq@conestogac.on.ca", "password6", "student"),
+            new MessagingApp.Models.User("Sienna Nguyen", "snguyen@conestogac.on.ca", "password7", "student"),
+            new MessagingApp.Models.User("Diego Morales", "dmorales@conestogac.on.ca", "password8", "student")
         });
         context.SaveChanges();
     }
 
-    //Add instructor if none exists
     var instructor = context.Users.FirstOrDefault(u => u.UserType == "instructor");
     if (instructor == null)
     {
-        instructor = new User("Caroline Mercer", "c.mercer@conestogac.on.ca", "password5", "instructor");
+        instructor = new MessagingApp.Models.User("Caroline Mercer", "c.mercer@conestogac.on.ca", "password5", "instructor");
         context.Users.Add(instructor);
         context.SaveChanges();
     }
 
-    //Seed courses if none exists
     if (!context.Courses.Any())
     {
-        int instructorId = context.Users.FirstOrDefault(u => u.UserType == "instructor").UserId;
-        context.Courses.AddRange(new List<Course>
-            {
-                new Course("Web Programming", instructorId),
-                new Course("C# Programming", instructorId),
-                new Course("Mobile Development", instructorId),
-                new Course("User Experience", instructorId),
-                new Course("Programming Concepts II", instructorId),
-                new Course("Database:SQL", instructorId)
-            });
-
+        int instructorId = context.Users.First(u => u.UserType == "instructor").UserId;
+        context.Courses.AddRange(new List<MessagingApp.Models.Course>
+        {
+            new MessagingApp.Models.Course("Web Programming", instructorId),
+            new MessagingApp.Models.Course("C# Programming", instructorId),
+            new MessagingApp.Models.Course("Mobile Development", instructorId),
+            new MessagingApp.Models.Course("User Experience", instructorId),
+            new MessagingApp.Models.Course("Programming Concepts II", instructorId),
+            new MessagingApp.Models.Course("Database:SQL", instructorId)
+        });
         context.SaveChanges();
     }
 
-    //seed enrollments
     if (!context.Enrollments.Any())
     {
         if (context.Users.Any() && context.Courses.Any())
@@ -125,56 +125,52 @@ void SeedDatabase(AppDbContext context)
             var students = context.Users.Where(u => u.UserType == "student").ToList();
             var courses = context.Courses.ToList();
 
-            context.Enrollments.AddRange(new List<Enrollment>
-                {
-                    // Austin, Khemara, Amanda
-                    new Enrollment(students[0].UserId, courses[0].CourseId), // Web Programming
-                    new Enrollment(students[0].UserId, courses[2].CourseId), // Mobile Development
-                    new Enrollment(students[0].UserId, courses[3].CourseId), // User Experience
-                    new Enrollment(students[0].UserId, courses[4].CourseId), // Programming Concepts II
+            context.Enrollments.AddRange(new List<MessagingApp.Models.Enrollment>
+            {
+                new MessagingApp.Models.Enrollment(students[0].UserId, courses[0].CourseId),
+                new MessagingApp.Models.Enrollment(students[0].UserId, courses[2].CourseId),
+                new MessagingApp.Models.Enrollment(students[0].UserId, courses[3].CourseId),
+                new MessagingApp.Models.Enrollment(students[0].UserId, courses[4].CourseId),
 
-                    new Enrollment(students[1].UserId, courses[0].CourseId),
-                    new Enrollment(students[1].UserId, courses[2].CourseId),
-                    new Enrollment(students[1].UserId, courses[3].CourseId),
-                    new Enrollment(students[1].UserId, courses[4].CourseId),
+                new MessagingApp.Models.Enrollment(students[1].UserId, courses[0].CourseId),
+                new MessagingApp.Models.Enrollment(students[1].UserId, courses[2].CourseId),
+                new MessagingApp.Models.Enrollment(students[1].UserId, courses[3].CourseId),
+                new MessagingApp.Models.Enrollment(students[1].UserId, courses[4].CourseId),
 
-                    new Enrollment(students[2].UserId, courses[0].CourseId),
-                    new Enrollment(students[2].UserId, courses[2].CourseId),
-                    new Enrollment(students[2].UserId, courses[3].CourseId),
-                    new Enrollment(students[2].UserId, courses[4].CourseId),
+                new MessagingApp.Models.Enrollment(students[2].UserId, courses[0].CourseId),
+                new MessagingApp.Models.Enrollment(students[2].UserId, courses[2].CourseId),
+                new MessagingApp.Models.Enrollment(students[2].UserId, courses[3].CourseId),
+                new MessagingApp.Models.Enrollment(students[2].UserId, courses[4].CourseId),
 
-                    // Tristan: use Database:SQL instead of Programming Concepts II
-                    new Enrollment(students[3].UserId, courses[0].CourseId),
-                    new Enrollment(students[3].UserId, courses[2].CourseId),
-                    new Enrollment(students[3].UserId, courses[3].CourseId),
-                    new Enrollment(students[3].UserId, courses[5].CourseId),
+                new MessagingApp.Models.Enrollment(students[3].UserId, courses[0].CourseId),
+                new MessagingApp.Models.Enrollment(students[3].UserId, courses[2].CourseId),
+                new MessagingApp.Models.Enrollment(students[3].UserId, courses[3].CourseId),
+                new MessagingApp.Models.Enrollment(students[3].UserId, courses[5].CourseId),
 
-                    // New students:
-                    new Enrollment(students[4].UserId, courses[0].CourseId),
-                    new Enrollment(students[4].UserId, courses[1].CourseId),
-                    new Enrollment(students[4].UserId, courses[2].CourseId),
-                    new Enrollment(students[4].UserId, courses[3].CourseId),
-                    new Enrollment(students[4].UserId, courses[5].CourseId),
+                new MessagingApp.Models.Enrollment(students[4].UserId, courses[0].CourseId),
+                new MessagingApp.Models.Enrollment(students[4].UserId, courses[1].CourseId),
+                new MessagingApp.Models.Enrollment(students[4].UserId, courses[2].CourseId),
+                new MessagingApp.Models.Enrollment(students[4].UserId, courses[3].CourseId),
+                new MessagingApp.Models.Enrollment(students[4].UserId, courses[5].CourseId),
 
-                    new Enrollment(students[5].UserId, courses[0].CourseId),
-                    new Enrollment(students[5].UserId, courses[1].CourseId),
-                    new Enrollment(students[5].UserId, courses[2].CourseId),
-                    new Enrollment(students[5].UserId, courses[3].CourseId),
-                    new Enrollment(students[5].UserId, courses[5].CourseId),
+                new MessagingApp.Models.Enrollment(students[5].UserId, courses[0].CourseId),
+                new MessagingApp.Models.Enrollment(students[5].UserId, courses[1].CourseId),
+                new MessagingApp.Models.Enrollment(students[5].UserId, courses[2].CourseId),
+                new MessagingApp.Models.Enrollment(students[5].UserId, courses[3].CourseId),
+                new MessagingApp.Models.Enrollment(students[5].UserId, courses[5].CourseId),
 
-                    new Enrollment(students[6].UserId, courses[0].CourseId),
-                    new Enrollment(students[6].UserId, courses[1].CourseId),
-                    new Enrollment(students[6].UserId, courses[2].CourseId),
-                    new Enrollment(students[6].UserId, courses[3].CourseId),
-                    new Enrollment(students[6].UserId, courses[5].CourseId),
+                new MessagingApp.Models.Enrollment(students[6].UserId, courses[0].CourseId),
+                new MessagingApp.Models.Enrollment(students[6].UserId, courses[1].CourseId),
+                new MessagingApp.Models.Enrollment(students[6].UserId, courses[2].CourseId),
+                new MessagingApp.Models.Enrollment(students[6].UserId, courses[3].CourseId),
+                new MessagingApp.Models.Enrollment(students[6].UserId, courses[5].CourseId),
 
-                    new Enrollment(students[7].UserId, courses[0].CourseId),
-                    new Enrollment(students[7].UserId, courses[1].CourseId),
-                    new Enrollment(students[7].UserId, courses[2].CourseId),
-                    new Enrollment(students[7].UserId, courses[3].CourseId),
-                    new Enrollment(students[7].UserId, courses[5].CourseId),
-
-                });
+                new MessagingApp.Models.Enrollment(students[7].UserId, courses[0].CourseId),
+                new MessagingApp.Models.Enrollment(students[7].UserId, courses[1].CourseId),
+                new MessagingApp.Models.Enrollment(students[7].UserId, courses[2].CourseId),
+                new MessagingApp.Models.Enrollment(students[7].UserId, courses[3].CourseId),
+                new MessagingApp.Models.Enrollment(students[7].UserId, courses[5].CourseId),
+            });
 
             context.SaveChanges();
         }
