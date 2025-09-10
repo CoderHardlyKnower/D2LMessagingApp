@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build_test_publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build --configuration Release --no-restore
+
+      # Run tests ONLY if there are test projects present (avoid failing when none exist)
+      - name: Test
+        shell: bash
+        run: |
+          shopt -s nullglob
+          tests=( **/*Tests.csproj )
+          if [ ${#tests[@]} -gt 0 ]; then
+            for t in "${tests[@]}"; do
+              echo "Running tests in $t"
+              dotnet test "$t" --configuration Release --no-build --verbosity normal
+            done
+          else
+            echo "No *Tests.csproj found. Skipping tests."
+          fi
+
+      # Publish the web app (adjust path if your web project folder name changes)
+      - name: Publish
+        run: dotnet publish ./MessagingApp/MessagingApp.csproj -c Release -o ./out
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp
+          path: ./out
