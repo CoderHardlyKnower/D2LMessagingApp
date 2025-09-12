@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using MessagingApp.Data;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -6,6 +6,9 @@ using MessagingApp.Models;
 using MessagingApp.Controllers;
 using Azure.Storage.Blobs;
 using MessagingApp.Services;
+using Azure.Core;            
+using Azure.Identity;        
+using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
