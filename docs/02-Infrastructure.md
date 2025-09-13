@@ -15,9 +15,6 @@
 ## Naming
 `rg-d2l-msg-<env>`, `app-d2l-msg-<env>`, `sql-d2l-msg-<env>`, `sig-d2l-msg-<env>`, `stmsg<random>`
 
-## Configuration (App Service → Configuration)
-- `To be figured out` 
-
 ## Secrets & Identity
 - Start with App Service app settings.
 - Stretch goal: **Key Vault** + **Managed Identity** → Key Vault references in App Service.
@@ -26,11 +23,14 @@
 - Public ingress only (for now).
 - Future options: IP restriction, Private Endpoints for SQL/Storage.
 
-## Provisioning 
-1. Create RG in Canada Central or East.
-2. Create App Service Plan (B1) + App Service.
-3. Create Azure SQL (Basic), DB `MessagingApp`.
-4. Create SignalR (F1).
-5. Create Storage (Blob).
-6. Create Application Insights and link to the app.
-7. Paste configuration values above.
+## Provisioning
+
+1. Create resource group in East US 2 (the only region my subscription + resources were happy with.  
+2. Deploy App Service Plan (B1 Linux) + App Service.  
+3. Deploy Azure SQL Database (`MessagingApp`).  
+4. Enable Managed Identity on App Service.  
+5. Configure `DefaultConnection` in App Service → Configuration → **Connection strings** tab with type **SQLAzure**.  
+6. Grant database roles to the Managed Identity (db_reader, db_writer, temporary db_owner).  
+7. Add application settings: `WEBSITES_INCLUDE_CLOUD_CERTS`, `RUN_AZURE_INIT`.  
+8. Restart app, allow initial EF migrations/seed, then remove `db_owner` and set `RUN_AZURE_INIT=false`.  
+9. Deploy SignalR, Storage, and Application Insights (integrated with the App Service).  
