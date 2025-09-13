@@ -1,5 +1,14 @@
-# Identity — Microsoft Entra External ID (CIAM)
+# Identity — Microsoft Entra ID / External ID
 
-## Goal
-Replace local DB email/password with hosted OIDC auth using Entra External ID. MFA potential.
+## Current use (September 13, 2025)
 
+- The web app authenticates to **Azure SQL Database** using **Managed Identity**.  
+- No passwords or connection strings are stored in code.  
+- Database user is created from the app’s system-assigned identity:
+
+```sql
+CREATE USER [app-msg-dev-<guid>] FROM EXTERNAL PROVIDER;
+EXEC sp_addrolemember N'db_datareader', N'app-msg-dev-<guid>';
+EXEC sp_addrolemember N'db_datawriter', N'app-msg-dev-<guid>';
+-- Temporary:
+EXEC sp_addrolemember N'db_owner', N'app-msg-dev-<guid>';
