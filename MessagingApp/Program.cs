@@ -8,7 +8,6 @@ using Azure.Storage.Blobs;
 using MessagingApp.Services;
 using Azure.Core;            
 using Azure.Identity;        
-using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,6 +74,21 @@ app.MapControllerRoute(
 
 // Map the SignalR hub
 app.MapHub<MessagingApp.Hubs.ChatHub>("/chathub");
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var env = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
+    if (!env.IsDevelopment() && Environment.GetEnvironmentVariable("RUN_AZURE_INIT") == "true")
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        db.Database.Migrate();     
+
+        if (!db.Users.Any())
+            SeedDatabase(db);
+    }
+}
 
 app.Run();
 
