@@ -11,14 +11,10 @@
     --m-subtle: #666;
     --m-safe: env(safe-area-inset-bottom, 0px);
     --m-top-safe: env(safe-area-inset-top, 0px);
-    --vvh: 100dvh; 
-    --kb-offset: 0px; 
-    --composerH: 64px; 
-    --safe-b: env(safe-area-inset-bottom, 0px);
-    --kb-breath: 80px; 
 }
 
 /* -------- Layout safety & ergonomics -------------------------------------- */
+
 body {
     padding: var(--m-pad);
     padding-bottom: calc(88px + var(--m-safe)); /* room for composer+safe area */
@@ -26,7 +22,6 @@ body {
     overscroll-behavior-y: contain; /* reduce accidental page bounce */
 }
 
-/* Footer remains part of flow on mobile to avoid fighting fixed composer */
 .custom-footer {
     position: static !important;
     box-shadow: none !important;
@@ -34,14 +29,14 @@ body {
     margin-top: var(--m-pad);
 }
 
-/* Hide desktop conversation list on mobile */
 .conversation-list-container {
     display: none !important;
 }
 
-/* === CRITICAL FIX: let the messaging panel be a normal flex box, not absolute with top/bottom. The absolute block caused conflicts when the keyboard changed the visual viewport. */
 .message-container {
-    position: relative !important;
+    position: absolute !important;
+    top: 100px !important;
+    bottom: 60px !important; /* (default; overridden on mobile below) */
     left: 0;
     right: 0;
     margin: 0 auto !important;
@@ -51,12 +46,11 @@ body {
     padding: var(--m-pad) !important;
     background: var(--m-bg) !important;
     box-shadow: none !important;
+    height: auto !important;
     display: flex !important;
-    flex-direction: column !important;
-    min-height: 0; /* allow inner scroll area to size */
+    flex-direction: column;
 }
 
-/* Title */
 .message-header-title {
     margin: 0 0 calc(var(--m-pad) * 0.75) 0;
     padding-top: var(--m-top-safe);
@@ -66,21 +60,19 @@ body {
 }
 
 /* -------- Message list: tall, smooth, thumb-friendly ---------------------- */
+
 .message-list {
     background: var(--m-muted) !important;
     border-radius: var(--m-radius) !important;
     padding: var(--m-pad) !important;
-    /* === CRITICAL FIX: use flex growth instead of hard max-height. */
-    flex: 1 1 auto !important;
+    max-height: calc(100dvh - 200px) !important; /* (default; overridden on mobile below) */
     min-height: 30dvh !important;
-    max-height: none !important;
     display: flex !important;
     flex-direction: column-reverse !important;
     gap: calc(var(--m-gap) * 0.75);
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     overflow-y: auto !important;
-    overscroll-behavior: contain;
 }
 
 /* Message bubble basics */
@@ -93,7 +85,8 @@ body {
     box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 
-.sent-message, .received-message {
+.sent-message,
+.received-message {
     margin: 0 12px !important;
 }
 
@@ -133,6 +126,7 @@ body {
     }
 
 /* -------- Composer: sticky bottom, safe-area-aware ------------------------ */
+
 .add-message-form {
     position: sticky !important;
     bottom: 0 !important;
@@ -148,21 +142,21 @@ body {
     gap: var(--m-gap) !important;
 }
 
-/* Growable textarea w/ ~6 line cap */
+/* Growable textarea w/ 5–6 line cap before it scrolls internally. */
 .message-textarea {
     width: 100% !important;
-    min-height: 44px !important;
+    min-height: 44px !important; /* (default; overridden on mobile below) */
     max-height: 7.5em !important;
     height: auto !important;
-    font-size: 16px !important; /* prevents iOS zoom */
+    font-size: 16px !important;
     border-radius: 10px !important;
     border: 2px solid #d0d7de !important;
     background: #fafafa !important;
-    padding: 10px 12px !important;
+    padding: 10px 12px !important; /* (default; overridden on mobile below) */
     overflow-y: auto !important;
 }
 
-/* Paperclip + send button */
+/* Paperclip + send button spacing and feel. */
 .add-message-form .send-btn {
     width: 46px !important;
     height: 46px !important;
@@ -182,7 +176,8 @@ body {
     margin-top: 6px !important;
 }
 
-/* -------- Typing indicator: sits above composer --------------------------- */
+/* -------- Typing indicator ------------------------------------------------ */
+
 .typing-indicator {
     position: sticky;
     bottom: calc(56px + var(--m-safe)); /* just above composer */
@@ -232,7 +227,8 @@ body {
     background: #fff;
 }
 
-#convoDrawer .list-group-item, #convoDrawer .user-container {
+#convoDrawer .list-group-item,
+#convoDrawer .user-container {
     min-height: 52px;
     display: flex;
     align-items: center;
@@ -243,6 +239,7 @@ body {
 }
 
 /* -------- Touch ergonomics & typography ----------------------------------- */
+
 html {
     font-size: 17px;
 }
@@ -260,12 +257,38 @@ img {
     content-visibility: auto;
 }
 
+.message-list {
+    overscroll-behavior: contain;
+}
+
 .message-checkmark {
     right: 6px !important;
     transform: translate(100%, -40%) !important;
 }
 
-/* ===== Mobile frame: header/footer visible; list scrolls =================== */
+/* ===== Mobile-only fixes ================================================== */
+@media (max-width: 900px) {
+
+    /* 1) Extend container to the bottom (remove the gap) */
+    .message-container {
+        bottom: calc(0px + var(--m-safe)) !important;
+    }
+
+    /* 2) Let the list use the extra space (no arbitrary cap) */
+    .message-list {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: none !important; /* removes the ~200px cap */
+    }
+
+    /* 3) Trim textarea so it doesn’t overtake the composer */
+    .message-textarea {
+        min-height: 34px !important; /* was 44px */
+        padding: 8px 10px !important; /* was 10px 12px */
+    }
+}
+
+/* ===== Your existing 800px block (left intact) ============================ */
 @media (max-width: 800px) {
     :root {
         --headerH: 40px;
@@ -292,7 +315,6 @@ img {
         z-index: 1000;
     }
 
-    /* Panel fills exactly between header and footer */
     #messagingRoot {
         height: 100dvh;
         padding-top: calc(var(--headerH) + var(--topGap));
@@ -314,7 +336,6 @@ img {
         box-shadow: none !important;
     }
 
-    /* Only the list scrolls */
     .message-list {
         flex: 1 1 auto;
         min-height: 0;
@@ -323,9 +344,8 @@ img {
         max-height: none !important;
     }
 
-    /* Composer always visible (sticky), keyboard handling will switch to fixed */
     .add-message-form {
-        position: sticky !important;
+        position: static !important;
         margin-top: 8px;
     }
 
@@ -342,55 +362,8 @@ img {
     }
 }
 
-/* Slight tweak for your nav toggle button */
 .btn.position-fixed.top-0.start-0.m-2.z-3 {
     top: 52px !important;
 }
 
-/* ============================================================================
-Keyboard-only behavior on mobile (<=800px)
-- NOTHING changes unless the on-screen keyboard is open.
-- When open: composer is fixed above the keyboard; list gets bottom padding.
-- When closed: your existing layout remains fully in control.
-============================================================================ */
-@media (max-width: 800px) {
-    /* We do NOT change body height while kb is open (prevents jump/whitespace) */
-    body.kb-open {
-        overflow: hidden !important; /* avoid rubber-banding the page behind */
-    }
 
-        /* Lift the composer using bottom offset (no transform = no double-lift) */
-        body.kb-open .add-message-form {
-            position: fixed !important;
-            left: 0;
-            right: 0;
-            bottom: var(--kb-offset); /* sit just above keyboard */
-            z-index: 1100; /* above footer */
-            padding-bottom: calc(12px + var(--safe-b)) !important;
-        }
-
-        /* Give the message list room for the composer while typing */
-        body.kb-open #messageList,
-        body.kb-open .message-list {
-            /* NEW: include --kb-breath so the last bubble never clips */
-            padding-bottom: calc(var(--composerH) + var(--safe-b) + var(--kb-breath)) !important;
-            -webkit-overflow-scrolling: touch;
-            overflow-y: auto !important;
-        }
-
-        /* Move the fixed footer off-screen while typing so it doesn't stack space */
-        body.kb-open .custom-footer {
-            transform: translateY(100%);
-            transition: transform 0.12s ease-out;
-        }
-
-        /* Remove the reserved footer space while typing */
-        body.kb-open #messagingRoot {
-            padding-bottom: 0 !important;
-        }
-
-        /* Let the panel use the full height (no footer deduction) while typing */
-        body.kb-open .message-container {
-            height: calc(100dvh - var(--headerH) - var(--topGap)) !important;
-        }
-}
