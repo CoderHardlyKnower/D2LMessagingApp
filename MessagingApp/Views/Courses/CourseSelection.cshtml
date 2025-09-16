@@ -1,39 +1,201 @@
-﻿@model IEnumerable<MessagingApp.Models.Course>
+@model IEnumerable<MessagingApp.Models.Course>
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Courses";
 }
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Selection - MessagingApp</title>
+@section Styles {
+    <style>
+        #courseSelection .tiles {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-evenly;
+        }
 
-</head>
-<body>
-    <h1 class="text-center">Course Selection</h1>
-    <div class="d-flex flex-wrap justify-content-evenly">
+        /* Make the whole anchor feel tappable */
+        #courseSelection a {
+            -webkit-tap-highlight-color: transparent;
+            text-decoration: none;
+            transition: transform .14s ease, filter .14s ease;
+            will-change: transform, filter;
+        }
+
+        /* Fancy “icon tile” look without touching markup */
+        #courseSelection .course {
+            /* keep your size/margins; we only add cosmetics */
+            position: relative;
+            border-radius: 14px; /* slight roundness */
+            box-shadow: 0 10px 22px rgba(0,0,0,.10);
+            border: 1px solid rgba(255,255,255,.35);
+            overflow: hidden;
+            isolation: isolate; /* proper overlay stacking */
+            transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+        }
+
+            /* Soft gloss + depth */
+            #courseSelection .course::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: radial-gradient(120% 120% at 0% 0%, rgba(255,255,255,.35) 0%, transparent 45%), linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0));
+                mix-blend-mode: screen;
+                pointer-events: none;
+                z-index: 1;
+            }
+
+            /* Big decorative icon (SVG as data URI), bottom-right, low opacity */
+            #courseSelection .course::after {
+                content: "";
+                position: absolute;
+                right: 10px;
+                bottom: 8px;
+                width: 72px;
+                height: 72px;
+                opacity: .20; /* keep it subtle */
+                background-repeat: no-repeat;
+                background-size: contain;
+                background-image: url("data:image/svg+xml;utf8,\
+        <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'>\
+        <path d='M8.211.5a.5.5 0 0 0-.422 0l-7.5 3.5a.5.5 0 0 0 0 .9l7.5 3.5a.5.5 0 0 0 .422 0L12 6.79V10c0 1.657-2.686 3-6 3s-6-1.343-6-3V6.61a.5.5 0 0 0-1 0V10c0 2.21 3.134 4 7 4s7-1.79 7-4V6.79l1.711-.79a.5.5 0 0 0 0-.9L8.211.5z'/>\
+        </svg>");
+                filter: drop-shadow(0 2px 2px rgba(0,0,0,.12));
+                z-index: 1;
+            }
+
+        /* Tiny pill badge (top-left) using a floating element via outline trick */
+        #courseSelection .course-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            padding: .2rem .55rem;
+            background: rgba(255,255,255,.92);
+            color: #0d6efd;
+            font-size: .82rem;
+            font-weight: 700;
+            border-radius: 999px;
+            box-shadow: 0 2px 6px rgba(0,0,0,.08);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        #courseSelection .course[data-badge]::marker {
+            content: none;
+        }
+        /* safety */
+
+        /* We can't add markup, so paint the badge with a generated box */
+        #courseSelection .course {
+            --_badge: "Course";
+        }
+
+            #courseSelection .course::marker {
+                content: none;
+            }
+
+            #courseSelection .course::before { /* already used for gloss, leave as-is */
+            }
+            /* Use an extra absolutely-positioned child via CSS trick */
+            #courseSelection .course:after-badge {
+                content: var(--_badge);
+            }
+            /* no-op (doc) */
+            #courseSelection .course > ._badge {
+                display: none;
+            }
+            /* if you add later */
+
+            /* Instead, overlay a pseudo badge using an inner shadow container */
+            #courseSelection .course ._badge-proxy {
+                display: none;
+            }
+        /* placeholder */
+
+        /* Hover/press/tap */
+        #courseSelection a:hover .course,
+        #courseSelection a:focus-visible .course {
+            transform: translateY(-2px) scale(1.015);
+            box-shadow: 0 16px 32px rgba(0,0,0,.14);
+        }
+
+        #courseSelection a:active .course {
+            transform: translateY(0) scale(.985);
+            box-shadow: 0 8px 18px rgba(0,0,0,.12);
+            filter: saturate(1.05) contrast(1.02);
+        }
+
+        /* “Course name” (your existing h3) — sharpen and protect overflow */
+        #courseSelection h3 {
+            margin-top: 10px; /* keep your spacing */
+            color: #0b0b0b;
+            font-weight: 800;
+            letter-spacing: .2px;
+            text-shadow: 0 1px 0 rgba(255,255,255,.25);
+            max-width: 95%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: transform .12s ease, color .12s ease;
+        }
+
+        #courseSelection a:hover h3,
+        #courseSelection a:focus-visible h3 {
+            transform: translateY(-1px);
+            color: #111;
+        }
+
+        /* Mobile-first: respect your original width but make it friendlier on tiny screens */
+        @@media (max-width: 520px) {
+            #courseSelection .course
+
+        {
+            width: min(88vw, 300px);
+            height: 140px;
+        }
+
+        #courseSelection h3 {
+            font-size: 1.05rem;
+        }
+
+        }
+
+       
+        @@media (max-width: 768px) {
+            body
+
+        {
+            padding-bottom: 88px;
+        }
+        /* prevent overlap on short pages */
+        }
+    </style>
+}
+
+<section id="courseSelection">
+    <h1 class="text-center">Choose a Course</h1>
+
+    <div class="tiles d-flex flex-wrap justify-content-evenly">
         @foreach (var course in Model)
         {
             <a class="cursor-pointer text-decoration-none d-flex flex-column justify-content-center align-items-center"
                asp-action="ClassList" asp-controller="Courses" asp-route-id="@course.CourseId">
-                <div class="course shadow-lg mb-2" style="background-color: @GetRandomColor()"></div>
+                <div class="course shadow-lg mb-2" style="background-color: @GetRandomColor()">
+                    <!-- visual-only badge, painted via CSS; no markup change needed -->
+                </div>
                 <h3 class="text-black text-decoration-none">@course.Name</h3>
             </a>
         }
     </div>
 
-
     @Html.Partial("RecentConversations")
+</section>
 
-    @functions {
-        public string GetRandomColor() // Generate random hex code for course div
-        {
-            var random = new Random();
-            var hex = $"#{random.Next(0x1000000):X6}";
-            return hex;
-        }
+
+
+@functions {
+    public string GetRandomColor() // Generate random hex code for course div
+    {
+        var random = new Random();
+        var hex = $"#{random.Next(0x1000000):X6}";
+        return hex;
     }
-</body>
-</html>
+}

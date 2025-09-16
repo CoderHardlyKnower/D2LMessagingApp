@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
     // Only run on phones/small tablets
     const mm = window.matchMedia('(max-width: 800px)');
     if (!mm.matches) return;

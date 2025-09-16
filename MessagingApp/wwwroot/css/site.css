@@ -771,7 +771,7 @@ h1 {
 /* Truncate ONLY the inner text, not the anchor (so caret isn't clipped) */
 .navbar .nav-link .name-clip {
     display: inline-block;
-    max-width: 55vw; /* adjust to taste (e.g., 50–60vw) */
+    max-width: 55vw; /* adjust to taste (e.g., 50â€“60vw) */
     vertical-align: middle;
     white-space: nowrap;
     overflow: hidden;

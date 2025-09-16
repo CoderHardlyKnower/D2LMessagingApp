@@ -1,16 +1,14 @@
-﻿
-
 /* -------- Global tokens (tweak here first) -------------------------------- */
 :root {
-    --m-pad: 12px; 
-    --m-gap: 10px; 
-    --m-radius: 12px; 
-    --m-bg: #ffffff; 
-    --m-muted: #f6f7f9; 
-    --m-accent: #0078D4; 
-    --m-accent-dark: #0056b3; 
-    --m-text: #111; 
-    --m-subtle: #666; 
+    --m-pad: 12px;
+    --m-gap: 10px;
+    --m-radius: 12px;
+    --m-bg: #ffffff;
+    --m-muted: #f6f7f9;
+    --m-accent: #0078D4;
+    --m-accent-dark: #0056b3;
+    --m-text: #111;
+    --m-subtle: #666;
     --m-safe: env(safe-area-inset-bottom, 0px);
     --m-top-safe: env(safe-area-inset-top, 0px);
 }
@@ -19,13 +17,13 @@
 
 body {
     padding: var(--m-pad);
-    padding-bottom: calc(88px + var(--m-safe)); /* room for composer+safe area */
-    background: #f4f4f9; /* consistent with site.css */
-    overscroll-behavior-y: contain; /* reduce accidental page bounce */
+    padding-bottom: calc(88px + var(--m-safe)); 
+    background: #f4f4f9; 
+    overscroll-behavior-y: contain; 
 }
 
 .custom-footer {
-    position: static !important; 
+    position: static !important;
     box-shadow: none !important;
     border-top: 1px solid #ddd;
     margin-top: var(--m-pad);
@@ -35,11 +33,10 @@ body {
     display: none !important;
 }
 
-
 .message-container {
     position: absolute !important;
-    top: 100px !important; 
-    bottom: 60px !important; 
+    top: 100px !important;
+    bottom: 60px !important;
     left: 0;
     right: 0;
     margin: 0 auto !important;
@@ -49,7 +46,9 @@ body {
     padding: var(--m-pad) !important;
     background: var(--m-bg) !important;
     box-shadow: none !important;
-    height: auto !important; 
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column;
 }
 
 .message-header-title {
@@ -62,22 +61,21 @@ body {
 
 /* -------- Message list: tall, smooth, thumb-friendly ---------------------- */
 
-
 .message-list {
     background: var(--m-muted) !important;
     border-radius: var(--m-radius) !important;
     padding: var(--m-pad) !important;
-    max-height: calc(100dvh - 200px) !important;
+    max-height: calc(100dvh - 200px) !important; /* (default; overridden on mobile below) */
     min-height: 30dvh !important;
     display: flex !important;
-    flex-direction: column-reverse !important; 
+    flex-direction: column-reverse !important;
     gap: calc(var(--m-gap) * 0.75);
     scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch; 
+    -webkit-overflow-scrolling: touch;
     overflow-y: auto !important;
 }
 
-/* Message bubble basics: slightly larger and finger-friendly on mobile. */
+/* Message bubble basics */
 .message {
     font-size: clamp(14px, 3.8vw, 16px);
     line-height: 1.45;
@@ -123,7 +121,7 @@ body {
 }
 
     .message-actions i {
-        padding: 10px !important; 
+        padding: 10px !important;
         font-size: 18px !important;
     }
 
@@ -147,14 +145,14 @@ body {
 /* Growable textarea w/ 5–6 line cap before it scrolls internally. */
 .message-textarea {
     width: 100% !important;
-    min-height: 44px !important;
-    max-height: 7.5em !important; 
+    min-height: 44px !important; 
+    max-height: 7.5em !important;
     height: auto !important;
-    font-size: 16px !important; 
+    font-size: 16px !important;
     border-radius: 10px !important;
     border: 2px solid #d0d7de !important;
     background: #fafafa !important;
-    padding: 10px 12px !important;
+    padding: 10px 12px !important; 
     overflow-y: auto !important;
 }
 
@@ -170,7 +168,7 @@ body {
         background: var(--m-accent-dark) !important;
     }
 
-/* File preview chips under the textarea—wrap when needed. */
+/* File preview chips */
 .file-preview {
     display: flex !important;
     flex-wrap: wrap !important;
@@ -178,7 +176,7 @@ body {
     margin-top: 6px !important;
 }
 
-/* -------- Typing indicator: sits above composer, left-aligned ------------- */
+/* -------- Typing indicator (future use) ------------------------------------------------ */
 
 .typing-indicator {
     position: sticky;
@@ -190,7 +188,6 @@ body {
     z-index: 4;
 }
 
-    /* Optional: subtle animated ellipsis feel */
     .typing-indicator::after {
         content: "";
         display: inline-block;
@@ -216,7 +213,6 @@ body {
     }
 }
 
-
 #convoDrawer.offcanvas {
     width: min(86vw, 380px);
 }
@@ -227,7 +223,7 @@ body {
 }
 
 #convoDrawer .offcanvas-body {
-    padding: 0 !important; 
+    padding: 0 !important;
     background: #fff;
 }
 
@@ -245,25 +241,22 @@ body {
 /* -------- Touch ergonomics & typography ----------------------------------- */
 
 html {
-    font-size: 17px; 
+    font-size: 17px;
 }
 
 button, .btn, .message-actions i, .add-message-form .send-btn {
-    -webkit-tap-highlight-color: transparent; 
+    -webkit-tap-highlight-color: transparent;
 }
 
-/* Minimal focus ring for a11y without heavy glow */
 :focus-visible {
     outline: 2px solid rgba(0, 120, 212, 0.25);
     outline-offset: 2px;
 }
 
-
 img {
-    content-visibility: auto; 
+    content-visibility: auto;
 }
 
-/* Smoothen scroll chaining in nested lists on iOS/Android */
 .message-list {
     overscroll-behavior: contain;
 }
@@ -273,15 +266,30 @@ img {
     transform: translate(100%, -40%) !important;
 }
 
+/* ===== Mobile-only fixes ================================================== */
+@media (max-width: 900px) {
 
+    .message-container {
+        bottom: calc(0px + var(--m-safe)) !important;
+    }
 
-/* ===== Mobile: header/footer visible; list scrolls; tighter top gap ===== */
+    .message-list {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+
+    .message-textarea {
+        min-height: 34px !important; 
+        padding: 8px 10px !important; 
+    }
+}
+
 @media (max-width: 800px) {
-    /* Tweak ONLY these if you need more/less space */
     :root {
-        --headerH: 40px; 
-        --footerH: 70px; 
-        --topGap: 8px; 
+        --headerH: 40px;
+        --footerH: 70px;
+        --topGap: 8px;
     }
 
     html, body {
@@ -303,7 +311,6 @@ img {
         z-index: 1000;
     }
 
-    /* Panel fills exactly between header and footer, with a small top gap */
     #messagingRoot {
         height: 100dvh;
         padding-top: calc(var(--headerH) + var(--topGap));
@@ -325,7 +332,6 @@ img {
         box-shadow: none !important;
     }
 
-    /* Only the list scrolls */
     .message-list {
         flex: 1 1 auto;
         min-height: 0;
@@ -334,21 +340,18 @@ img {
         max-height: none !important;
     }
 
-    /* Composer always visible */
     .add-message-form {
-        position: static !important; 
+        position: static !important;
         margin-top: 8px;
     }
 
-    /* Make sure the textarea never collapses away */
     .message-textarea {
-        min-height: 44px !important; 
-        max-height: 7.5em !important; 
+        min-height: 44px !important;
+        max-height: 7.5em !important;
         overflow-y: auto !important;
-        font-size: 16px !important; 
+        font-size: 16px !important;
     }
 
-    /* Offcanvas can still scroll */
     .offcanvas, .offcanvas .offcanvas-body {
         overflow: auto;
         -webkit-overflow-scrolling: touch;
@@ -356,5 +359,7 @@ img {
 }
 
 .btn.position-fixed.top-0.start-0.m-2.z-3 {
-    top: 52px !important; 
+    top: 52px !important;
 }
+
+
