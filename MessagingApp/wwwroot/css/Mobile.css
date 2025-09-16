@@ -17,9 +17,9 @@
 
 body {
     padding: var(--m-pad);
-    padding-bottom: calc(88px + var(--m-safe)); /* room for composer+safe area */
-    background: #f4f4f9; /* consistent with site.css */
-    overscroll-behavior-y: contain; /* reduce accidental page bounce */
+    padding-bottom: calc(88px + var(--m-safe)); 
+    background: #f4f4f9; 
+    overscroll-behavior-y: contain; 
 }
 
 .custom-footer {
@@ -36,7 +36,7 @@ body {
 .message-container {
     position: absolute !important;
     top: 100px !important;
-    bottom: 60px !important; /* (default; overridden on mobile below) */
+    bottom: 60px !important;
     left: 0;
     right: 0;
     margin: 0 auto !important;
@@ -145,14 +145,14 @@ body {
 /* Growable textarea w/ 5–6 line cap before it scrolls internally. */
 .message-textarea {
     width: 100% !important;
-    min-height: 44px !important; /* (default; overridden on mobile below) */
+    min-height: 44px !important; 
     max-height: 7.5em !important;
     height: auto !important;
     font-size: 16px !important;
     border-radius: 10px !important;
     border: 2px solid #d0d7de !important;
     background: #fafafa !important;
-    padding: 10px 12px !important; /* (default; overridden on mobile below) */
+    padding: 10px 12px !important; 
     overflow-y: auto !important;
 }
 
@@ -176,7 +176,7 @@ body {
     margin-top: 6px !important;
 }
 
-/* -------- Typing indicator ------------------------------------------------ */
+/* -------- Typing indicator (future use) ------------------------------------------------ */
 
 .typing-indicator {
     position: sticky;
@@ -269,26 +269,22 @@ img {
 /* ===== Mobile-only fixes ================================================== */
 @media (max-width: 900px) {
 
-    /* 1) Extend container to the bottom (remove the gap) */
     .message-container {
         bottom: calc(0px + var(--m-safe)) !important;
     }
 
-    /* 2) Let the list use the extra space (no arbitrary cap) */
     .message-list {
         flex: 1 1 auto !important;
         min-height: 0 !important;
-        max-height: none !important; /* removes the ~200px cap */
+        max-height: none !important;
     }
 
-    /* 3) Trim textarea so it doesn’t overtake the composer */
     .message-textarea {
-        min-height: 34px !important; /* was 44px */
-        padding: 8px 10px !important; /* was 10px 12px */
+        min-height: 34px !important; 
+        padding: 8px 10px !important; 
     }
 }
 
-/* ===== Your existing 800px block (left intact) ============================ */
 @media (max-width: 800px) {
     :root {
         --headerH: 40px;

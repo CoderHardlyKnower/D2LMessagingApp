@@ -6,12 +6,7 @@
 
 @section Styles {
     <style>
-        /* =========================
-           CourseSelection-only styles
-           (scoped — won’t conflict with site.css)
-           ========================= */
         #courseSelection .tiles {
-            /* keep exactly how you lay things out */
             display: flex;
             flex-wrap: wrap;
             justify-content: space-evenly;
@@ -185,7 +180,6 @@
                asp-action="ClassList" asp-controller="Courses" asp-route-id="@course.CourseId">
                 <div class="course shadow-lg mb-2" style="background-color: @GetRandomColor()">
                     <!-- visual-only badge, painted via CSS; no markup change needed -->
-                    <span class="course-badge">Course</span>
                 </div>
                 <h3 class="text-black text-decoration-none">@course.Name</h3>
             </a>
