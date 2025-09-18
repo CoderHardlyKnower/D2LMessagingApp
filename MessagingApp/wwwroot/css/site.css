@@ -684,6 +684,67 @@ h1 {
     margin: 4px 0;
 }
 
+/* === Chat upload: mobile fixes & visibility overrides === */
+
+#uploadUi {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    min-width: 0;
+}
+
+    #uploadUi progress {
+        max-width: 100%;
+    }
+
+/* Percent + status should never disappear */
+#uploadPercent,
+#uploadStatus {
+    display: inline-block;
+    white-space: nowrap; 
+}
+
+/* Darken muted text on mobile so it’s readable */
+@media (max-width: 800px) {
+    #uploadUi .text-muted {
+        color: #333 !important;
+    }
+}
+
+
+@media (max-width: 480px) {
+    #uploadUi {
+        flex-wrap: wrap;
+    }
+
+        #uploadUi progress {
+            flex: 1 1 100%;
+            width: 100% !important;
+            order: 1;
+        }
+
+    #uploadPercent {
+        order: 2;
+    }
+
+    #uploadStatus {
+        order: 3;
+    }
+
+    #uploadRetry {
+        order: 4;
+    }
+
+    /* Slightly larger text so it's legible on phones */
+    #uploadPercent,
+    #uploadStatus,
+    #uploadRetry {
+        font-size: 14px;
+    }
+}
+
+
 
 
 

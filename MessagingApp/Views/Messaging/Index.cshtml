@@ -1,4 +1,4 @@
-﻿@model IEnumerable<MessagingApp.Models.Message>
+@model IEnumerable<MessagingApp.Models.Message>
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
     var userNames = ViewBag.UserNames as Dictionary<int, string>;
@@ -188,6 +188,15 @@
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
+                        <!-- Upload progress & status -->
+                        <div class="mt-2" id="uploadUi" hidden>
+                            <progress id="uploadProgress" max="100" value="0" style="width:260px;"></progress>
+                            <span id="uploadPercent" class="text-muted ms-2">0%</span>
+                            <span id="uploadStatus" class="text-muted ms-2">Preparing…</span>
+                            <button type="button" id="uploadRetry" class="btn btn-sm btn-outline-danger ms-2" hidden>Retry</button>
+                        </div>
+
+
                 </form>
                 </div>
                 <!-- Confirm Delete Modal -->
@@ -203,6 +212,17 @@
         </div>
     </div>
 </div>
+
+<!-- Floating error toast (bottom-right) -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    <div id="uploadToast" class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="uploadToastBody">Something went wrong.</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
 
 @section Scripts {
     <!-- SignalR and Icons -->
@@ -319,19 +339,121 @@
             }
         });
 
-        document.getElementById("messageForm").addEventListener("submit", function (e) {
+        (function () {
+          const form       = document.getElementById('messageForm');
+          if (!form) return;
+
+          const sendBtn    = form.querySelector('button[type="submit"]');
+          const contentEl  = document.getElementById("contentInput");
+          const fileEl     = document.getElementById("fileInput");
+          const previewEl  = document.getElementById("filePreview");
+
+          const uploadUi   = document.getElementById("uploadUi");
+          const progressEl = document.getElementById("uploadProgress");
+          const percentEl  = document.getElementById("uploadPercent");
+          const statusEl   = document.getElementById("uploadStatus");
+          const retryBtn   = document.getElementById("uploadRetry");
+
+          // Toast helper
+          let uploadToast;
+          function showErrorToast(msg) {
+            const el = document.getElementById('uploadToast');
+            const body = document.getElementById('uploadToastBody');
+            body.textContent = msg || 'Upload failed';
+            uploadToast = uploadToast || new bootstrap.Toast(el, { delay: 4000 });
+            uploadToast.show();
+          }
+
+          function resetProgressUi(hide = true) {
+            progressEl.value = 0;
+            percentEl.textContent = '0%';
+            statusEl.textContent = 'Preparing…';
+            retryBtn.hidden = true;
+            if (hide) uploadUi.hidden = true;
+          }
+
+          // Allow manual retry
+          retryBtn.addEventListener('click', () => {
+            // Fire another submit with current inputs (file/text preserved)
+            form.dispatchEvent(new Event('submit', { cancelable: true }));
+          });
+
+          form.addEventListener('submit', function (e) {
             e.preventDefault();
             cancelActiveEdits();
-            const content = document.getElementById("contentInput").value.trim();
-            const hasFile = document.getElementById("fileInput").files.length > 0;
-            if (!content && !hasFile) return;
-            const data = new FormData(this);
-            fetch(this.action, { method: 'POST', body: data })
-                .catch(err => console.error("SendMessage error:", err));
-            document.getElementById("contentInput").value = "";
-            document.getElementById("fileInput").value = "";
-            document.getElementById("filePreview").innerHTML = "";
-        });
+
+            const hasText = (contentEl.value || '').trim().length > 0;
+            const hasFile = fileEl.files.length > 0;
+            if (!hasText && !hasFile) return;
+
+            // Reset + show progress strip
+            resetProgressUi(false);
+            statusEl.textContent = hasFile ? 'Uploading…' : 'Sending…';
+            uploadUi.hidden = false;
+
+            // Build payload
+            const fd = new FormData(form);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action, true);
+
+            // Anti-forgery
+            const tokenInput = form.querySelector('input[name="__RequestVerificationToken"]');
+            if (tokenInput) xhr.setRequestHeader('RequestVerificationToken', tokenInput.value);
+
+            sendBtn.disabled = true;
+
+            // Progress (only fires when a file is present)
+            xhr.upload.onprogress = function (evt) {
+              if (!evt.lengthComputable) return;
+              const pct = Math.round((evt.loaded / evt.total) * 100);
+              progressEl.value = pct;
+              percentEl.textContent = pct + '%';
+              statusEl.textContent = pct < 100 ? 'Uploading…' : 'Processing…';
+            };
+
+            xhr.onreadystatechange = function () {
+              if (xhr.readyState !== 4) return;
+
+              sendBtn.disabled = false;
+
+              if (xhr.status >= 200 && xhr.status < 300) {
+                // Success: keep strip momentarily for reassurance, then hide
+                statusEl.textContent = 'Sent!';
+                setTimeout(() => resetProgressUi(true), 600);
+
+                // Only clear inputs on success
+                contentEl.value = '';
+                fileEl.value = '';
+                if (previewEl) previewEl.innerHTML = '';
+                // Bubble appears via SignalR ReceiveMessage
+              } else {
+                // Failure: minimal inline text + small Retry button, plus a toast for details
+                statusEl.textContent = 'Failed';
+                retryBtn.hidden = false;
+
+                let msg = xhr.responseText || 'Upload failed. Check your connection and try again.';
+                try {
+                  const j = JSON.parse(xhr.responseText);
+                  msg = j?.error || j?.message || msg;
+                } catch {}
+
+                showErrorToast(msg);
+                // Keep progress strip visible so the user can press Retry; DO NOT clear inputs
+              }
+            };
+
+            xhr.onerror = function () {
+              sendBtn.disabled = false;
+              statusEl.textContent = 'Failed';
+              retryBtn.hidden = false;
+              showErrorToast('Network error during upload. Please try again.');
+              // Keep UI intact for retry
+            };
+
+            xhr.send(fd);
+          });
+        })();
+
 
         connection.on("UpdateConversations", () => {
             if (typeof updateConversations === "function") updateConversations();
