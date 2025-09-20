@@ -321,7 +321,7 @@
                 this.value = "";
                 return;
             }
-            if (["png", "jpg", "jpeg", "gif"].includes(ext)) {
+            if (["png", "jpg", "jpeg", "gif", "webp"].includes(ext)) {
                 const reader = new FileReader();
                 reader.onload = e => {
                     const img = document.createElement("img");
