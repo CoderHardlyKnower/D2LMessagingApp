@@ -6,22 +6,31 @@ using MessagingApp.Models;
 using MessagingApp.Controllers;
 using Azure.Storage.Blobs;
 using MessagingApp.Services;
-using Azure.Core;            
-using Azure.Identity;        
-
+using Azure.Core;
+using Microsoft.AspNetCore.Http.Features;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// File storage service
-//builder.Services.AddSingleton(sp =>
-//    new BlobServiceClient(
-//        builder.Configuration["Azure:StorageConnectionString"]
-//    )
-//);
-//builder.Services.AddTransient<IFileStorageService, AzureBlobStorageService>();
-builder.Services.AddTransient<IFileStorageService, LocalFileStorageService>();
+builder.Services.AddSingleton(sp =>
+{
+    var cs = builder.Configuration.GetConnectionString("AzureBlobStorage")
+             ?? builder.Configuration["Azure:StorageConnectionString"]
+             ?? builder.Configuration["Azure:Storage:ConnectionString"];
+
+    // For Azurite/local emulator, you can use: "UseDevelopmentStorage=true"
+    return new BlobServiceClient(cs);
+});
+
+// 2) Use Azure-backed implementation (remove the Local one)
+builder.Services.AddTransient<IFileStorageService, AzureBlobStorageService>();
+
+// (Optional but recommended) raise body size limits for large PDFs/images
+builder.Services.Configure<FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 50L * 1024 * 1024; // 50 MB
+});
 
 // Configure SQL Server 
 builder.Services.AddDbContext<AppDbContext>(options =>

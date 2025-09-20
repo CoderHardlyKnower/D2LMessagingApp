@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using MessagingApp.Data;
 using MessagingApp.Hubs;
@@ -79,8 +79,7 @@ namespace MessagingApp.Controllers
      string content,
      string studentName,
      int conversationId,
-     IFormFile? attachment
- )
+     IFormFile? attachment)
         {
             // Allow: text OR file OR both
             if (string.IsNullOrWhiteSpace(content) && (attachment == null || attachment.Length == 0))
@@ -88,45 +87,58 @@ namespace MessagingApp.Controllers
                 return BadRequest("No content or attachment provided.");
             }
 
-            int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
+            // --- Server-side guardrails ---
+            const long MaxUploadBytes = 25L * 1024 * 1024; // 25 MB
+            var allowedExt = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf" };
 
-            var message = new Message
-            {
-                // Ensure Content is never null (helps with non-null DB columns and simple UI checks)
-                Content = content ?? string.Empty,
-                Timestamp = DateTime.Now,
-                CreatedTimestamp = DateTime.Now,   
-                SenderId = loggedInUserId,
-                ReceiverId = studentId,
-                ConversationId = conversationId,
-                IsRead = false
-            };
+            string? attachmentUrl = null;
 
             if (attachment != null && attachment.Length > 0)
             {
+                if (attachment.Length > MaxUploadBytes)
+                    return BadRequest($"File too large. Max {MaxUploadBytes / (1024 * 1024)} MB.");
+
+                var ext = Path.GetExtension(attachment.FileName);
+                if (!allowedExt.Contains(ext))
+                    return BadRequest("Unsupported file type. Allowed: images (png/jpg/jpeg/gif/webp) and PDF.");
+
+                // Upload to Blob Storage (IFileStorageService)
                 using var stream = attachment.OpenReadStream();
-                message.AttachmentUrl = await _fileStorage.UploadAsync(stream, attachment.FileName);
+                attachmentUrl = await _fileStorage.UploadAsync(stream, attachment.FileName);
             }
+
+            int loggedInUserId = int.Parse(User.FindFirst("UserId")!.Value);
+
+            var message = new Message
+            {
+                Content = content ?? string.Empty,
+                Timestamp = DateTime.Now,
+                CreatedTimestamp = DateTime.Now,
+                SenderId = loggedInUserId,
+                ReceiverId = studentId,
+                ConversationId = conversationId,
+                IsRead = false,
+                // requires public string? AttachmentUrl { get; set; } in your model
+                AttachmentUrl = attachmentUrl
+            };
 
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
-            // Standardize the broadcast SHAPE so the client can always rely on arg positions:
-            await _hub.Clients
-                .Group($"conversation_{conversationId}")
+            // Push to clients in this conversation (your client already listens for ReceiveMessage)
+            await _hub.Clients.Group($"conversation_{conversationId}")
                 .SendAsync("ReceiveMessage",
                     message.SenderId,
                     User.Identity!.Name,
                     message.Content,
                     message.Timestamp.ToShortTimeString(),
                     message.Id,
-                    message.AttachmentUrl
-                );
+                    message.AttachmentUrl);
 
-            // Keep the sidebar badges/lists fresh
             await _hub.Clients.All.SendAsync("UpdateConversations");
 
-            return Ok(new { messageId = message.Id });
+            return Ok(new { messageId = message.Id, attachment = message.AttachmentUrl != null });
         }
 
 
@@ -172,9 +184,10 @@ namespace MessagingApp.Controllers
                 select new
                 {
                     c.ConversationId,
-                    LastMessage = lastMsg.Content,                 // raw text (may be "")
+                    LastMessage = lastMsg.Content,                 
                     LastMessageTimestamp = lastMsg.Timestamp,
                     LastMessageSenderId = lastMsg.SenderId,
+
                     // New: attachment flags for UI
                     HasAttachment = !string.IsNullOrEmpty(lastMsg.AttachmentUrl),
                     IsFileOnly = !string.IsNullOrEmpty(lastMsg.AttachmentUrl) && string.IsNullOrWhiteSpace(lastMsg.Content),

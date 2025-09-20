@@ -684,6 +684,108 @@ h1 {
     margin: 4px 0;
 }
 
+/* === Chat upload: mobile fixes & visibility overrides === */
+
+#uploadUi {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    min-width: 0;
+}
+
+    #uploadUi progress {
+        max-width: 100%;
+    }
+
+/* Percent + status should never disappear */
+#uploadPercent,
+#uploadStatus {
+    display: inline-block;
+    white-space: nowrap; 
+}
+
+/* Darken muted text on mobile so it’s readable */
+@media (max-width: 800px) {
+    #uploadUi .text-muted {
+        color: #333 !important;
+    }
+}
+
+
+@media (max-width: 480px) {
+    #uploadUi {
+        flex-wrap: wrap;
+    }
+
+        #uploadUi progress {
+            flex: 1 1 100%;
+            width: 100% !important;
+            order: 1;
+        }
+
+    #uploadPercent {
+        order: 2;
+    }
+
+    #uploadStatus {
+        order: 3;
+    }
+
+    #uploadRetry {
+        order: 4;
+    }
+
+    /* Slightly larger text so it's legible on phones */
+    #uploadPercent,
+    #uploadStatus,
+    #uploadRetry {
+        font-size: 14px;
+    }
+}
+
+
+/* File-only bubbles should still look like normal sent/received colors */
+.message-wrapper.sent.file-only .message {
+    background: #0078d4; /* your accent blue */
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 18px;
+}
+
+.message-wrapper.received.file-only .message {
+    background: #e9e9e9;
+    color: #111;
+    padding: 10px 14px;
+    border-radius: 18px;
+}
+
+/* File attachment row */
+.file-attachment {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.file-icon {
+    font-size: 1rem;
+    color: #0078d4;
+}
+
+.file-link {
+    color: #0078d4 !important;
+    font-weight: 500;
+    text-decoration: none;
+    word-break: break-word;
+}
+
+    .file-link:hover {
+        text-decoration: underline;
+    }
+
+
+
+
 
 
 
@@ -795,3 +897,8 @@ h1 {
         max-width: 50vw;
     }
 }
+
+
+
+
+
