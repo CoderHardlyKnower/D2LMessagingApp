@@ -6,15 +6,18 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: lms-msg-dev      
-  DOTNET_VERSION: '8.0.x'             
+  AZURE_WEBAPP_NAME: lms-msg-dev
+  DOTNET_VERSION: 8.0.x
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup .NET
