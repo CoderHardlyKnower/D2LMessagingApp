@@ -7,6 +7,52 @@
     string studentName = ViewBag.StudentName as string;
     int conversationId = (int)ViewBag.ConversationId;
     ViewData["Title"] = "Messaging"; // for layout title
+
+    // --- Name helpers: mirror _Layout logic + email fallback to "First Last" ---
+    string? nameDisplay = User.FindFirst("name")?.Value;
+    string? nameClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+    string? given = User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value;
+    string? surname = User.FindFirst(System.Security.Claims.ClaimTypes.Surname)?.Value;
+    string? preferredUser = User.FindFirst("preferred_username")?.Value;
+
+    string fullName = (nameDisplay
+                       ?? nameClaim
+                       ?? $"{(given ?? "").Trim()} {(surname ?? "").Trim()}".Trim()
+                       ?? preferredUser
+                       ?? (User.Identity?.Name ?? "Account"))
+                      .Trim();
+
+    string FirstCap(string s) => string.IsNullOrEmpty(s)
+        ? s
+        : char.ToUpperInvariant(s[0]) + (s.Length > 1 ? s.Substring(1).ToLowerInvariant() : "");
+
+    string ToFirstLast(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "Unknown";
+        // If it already looks like "First Last" (has a space and no '@'), use it
+        if (raw.Contains(' ') && !raw.Contains("@")) return raw.Trim();
+
+        // If it looks like an email, derive "First Last" from the local-part
+        var atIdx = raw.IndexOf('@');
+        var stem = atIdx > 0 ? raw.Substring(0, atIdx) : raw;
+
+        // Replace common separators with spaces, collapse whitespace
+        stem = stem.Replace('.', ' ').Replace('_', ' ').Replace('-', ' ');
+        stem = System.Text.RegularExpressions.Regex.Replace(stem, "\\s+", " ").Trim();
+
+        var tokens = stem.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length == 0) return raw.Trim();
+        if (tokens.Length == 1) return FirstCap(tokens[0]);
+
+        return $"{FirstCap(tokens[0])} {FirstCap(tokens[^1])}";
+    }
+
+    // Display names for others; "You" will be used for the logged-in user in the UI
+    var displayNames = userNames?.ToDictionary(kv => kv.Key, kv => ToFirstLast(kv.Value))
+                       ?? new Dictionary<int, string>();
+
+    // Header should also show a nice human name
+    string displayStudentName = ToFirstLast(studentName ?? "");
 }
 
 @section Styles {
@@ -19,25 +65,23 @@
          I did not edit the partial; these rules neutralize its fixed layout & display toggles. -->
     <style>
         @@media (max-width: 800px) {
-            #convoDrawer .conversation-list-container, .offcanvas .conversation-list-container
+            #convoDrawer .conversation-list-container, .offcanvas .conversation-list-container {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                left: auto !important;
+                top: auto !important;
+                bottom: auto !important;
+                border-right: 0 !important;
+                padding: 12px !important;
+                background: #fff !important;
+                z-index: auto !important;
+            }
 
-        {
-            display: block !important;
-            position: static !important;
-            width: 100% !important;
-            left: auto !important;
-            top: auto !important;
-            bottom: auto !important;
-            border-right: 0 !important;
-            padding: 12px !important;
-            background: #fff !important;
-            z-index: auto !important;
-        }
-        #convoDrawer .conversation-widget,
-        .offcanvas .conversation-widget {
-            display: none !important;
-        }
-
+            #convoDrawer .conversation-widget,
+            .offcanvas .conversation-widget {
+                display: none !important;
+            }
         }
     </style>
 }
@@ -63,131 +107,133 @@
 </div>
 
 <div id="messagingRoot">
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar for Active Conversations -->
-        <div class="col-md-3" id="desktopConversationList">
-            <div id="conversationListRoot" class="conversation-list-container">
-                @Html.Partial("_ConversationList")
-            </div>
-        </div>
-
-
-        <!-- Main Messaging Panel -->
-        <div class="col-md-9">
-            <div class="message-container">
-                <h2 class="message-header-title">Messaging with @studentName</h2>
-
-                <div class="message-list" id="messageList">
-                    @{
-                        var lastSentMessageId = Model
-                        .Where(m => m.SenderId == loggedInUserId)
-                        .OrderByDescending(m => m.CreatedTimestamp)
-                        .Select(m => m.Id)
-                        .FirstOrDefault();
-                    }
-
-                    @if (Model != null && Model.Any())
-                    {
-                        foreach (var message in Model.Reverse())
-                        {
-                            bool isSentByUser = message.SenderId == loggedInUserId;
-                            bool hasAttachment = !string.IsNullOrEmpty(message.AttachmentUrl);
-                            string ext = hasAttachment
-                            ? System.IO.Path.GetExtension(message.AttachmentUrl).ToLowerInvariant()
-                            : null;
-                            var imgExts = new[] { ".png", ".jpg", ".jpeg", ".gif" };
-
-                            <div class="message-wrapper @(isSentByUser ? "sent" : "received") @(hasAttachment && string.IsNullOrWhiteSpace(message.Content) ? "file-only" : "")"
-                                 data-message-id="@message.Id">
-                                <div class="message-header">
-                                    <small class="message-info">
-                                        @(userNames.ContainsKey(message.SenderId)
-                                                                        ? userNames[message.SenderId]
-                                                                        : "Unknown")
-                                                                                    - @message.Timestamp.ToShortTimeString()
-                                                                                    @Html.Raw(message.IsEdited
-                                                                        ? " <span class=\"edited-label\">(edited)</span>"
-                                                                        : "")
-                            </small>
-                            @if (isSentByUser)
-                                    {
-                                        <div class="message-actions">
-                                            <i class="fas fa-edit edit-icon" title="Edit"></i>
-                                            <i class="fas fa-trash delete-icon" title="Delete"></i>
-                                        </div>
-                                    }
-                                </div>
-
-                                <div class="message @(isSentByUser ? "sent-message" : "received-message")">
-                                    @message.Content
-
-                                    @if (hasAttachment)
-                                    {
-                                        <div class="attachment mt-2">
-                                            @if (imgExts.Contains(ext))
-                                            {
-                                                <a href="@message.AttachmentUrl" target="_blank">
-                                                    <img src="@message.AttachmentUrl" class="attachment-thumb" />
-                                                </a>
-                                            }
-                                            else
-                                            {
-                                                <a href="@message.AttachmentUrl" target="_blank">
-                                                    <i class="fas fa-paperclip"></i>
-                                                    @System.IO.Path.GetFileName(message.AttachmentUrl)
-                                                </a>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-
-                                @if (isSentByUser && message.Id == lastSentMessageId)
-                                {
-                                    <div class="message-checkmark">
-                                        <i class="fas fa-check-circle"></i>
-                                    </div>
-                                    @if (message.IsRead && message.ReadTime.HasValue)
-                                    {
-                                        <div class="read-receipt">
-                                            Read @message.ReadTime.Value.ToShortTimeString()
-                                        </div>
-                                    }
-                                }
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        <p>No messages available.</p>
-                    }
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar for Active Conversations -->
+            <div class="col-md-3" id="desktopConversationList">
+                <div id="conversationListRoot" class="conversation-list-container">
+                    @Html.Partial("_ConversationList")
                 </div>
+            </div>
 
-                <!-- Message Input Form -->
-                <form class="add-message-form" id="messageForm" method="post"
-                      asp-action="AddMessage" asp-controller="Messaging"
-                      enctype="multipart/form-data">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="studentId" value="@ViewBag.StudentId" />
-                    <input type="hidden" name="studentName" value="@studentName" />
-                    <input type="hidden" name="conversationId" value="@conversationId" />
 
-                    <textarea name="content" id="contentInput" class="message-textarea"
-                              placeholder="Type your message here..."></textarea>
+            <!-- Main Messaging Panel -->
+            <div class="col-md-9">
+                <div class="message-container">
+                    <h2 class="message-header-title">Messaging with @displayStudentName</h2>
 
-                    <div id="filePreview" class="file-preview mt-2"></div>
+                    <div class="message-list" id="messageList">
+                        @{
+                            var lastSentMessageId = Model
+                            .Where(m => m.SenderId == loggedInUserId)
+                            .OrderByDescending(m => m.CreatedTimestamp)
+                            .Select(m => m.Id)
+                            .FirstOrDefault();
+                        }
 
-                    <div class="d-flex align-items-center mt-2">
-                        <button type="button" class="btn btn-light me-2"
-                                onclick="document.getElementById('fileInput').click();">
-                            <i class="fas fa-paperclip"></i>
-                        </button>
-                        <input type="file" id="fileInput" name="attachment" hidden accept=".pdf,image/*" />
+                        @if (Model != null && Model.Any())
+                        {
+                            foreach (var message in Model.Reverse())
+                            {
+                                bool isSentByUser = message.SenderId == loggedInUserId;
+                                bool hasAttachment = !string.IsNullOrEmpty(message.AttachmentUrl);
+                                string ext = hasAttachment
+                                ? System.IO.Path.GetExtension(message.AttachmentUrl).ToLowerInvariant()
+                                : null;
+                                var imgExts = new[] { ".png", ".jpg", ".jpeg", ".gif" };
 
-                        <button type="submit" class="send-btn ms-auto">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
+                                <div class="message-wrapper @(isSentByUser ? "sent" : "received") @(hasAttachment && string.IsNullOrWhiteSpace(message.Content) ? "file-only" : "")"
+                                     data-message-id="@message.Id">
+                                    <div class="message-header">
+                                        <small class="message-info">
+                                            @(isSentByUser
+                                                                                ? "You"
+                                                                                : (displayNames.ContainsKey(message.SenderId)
+                                                                                ? displayNames[message.SenderId]
+                                                                                : "Unknown"))
+                                                                                             - @message.Timestamp.ToShortTimeString()
+                                                                                             @Html.Raw(message.IsEdited
+                                                                                ? " <span class=\"edited-label\">(edited)</span>"
+                                                                                : "")
+                                </small>
+                                @if (isSentByUser)
+                                        {
+                                            <div class="message-actions">
+                                                <i class="fas fa-edit edit-icon" title="Edit"></i>
+                                                <i class="fas fa-trash delete-icon" title="Delete"></i>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="message @(isSentByUser ? "sent-message" : "received-message")">
+                                        @message.Content
+
+                                        @if (hasAttachment)
+                                        {
+                                            <div class="attachment mt-2">
+                                                @if (imgExts.Contains(ext))
+                                                {
+                                                    <a href="@message.AttachmentUrl" target="_blank">
+                                                        <img src="@message.AttachmentUrl" class="attachment-thumb" />
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <a href="@message.AttachmentUrl" target="_blank">
+                                                        <i class="fas fa-paperclip"></i>
+                                                        @System.IO.Path.GetFileName(message.AttachmentUrl)
+                                                    </a>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+
+                                    @if (isSentByUser && message.Id == lastSentMessageId)
+                                    {
+                                        <div class="message-checkmark">
+                                            <i class="fas fa-check-circle"></i>
+                                        </div>
+                                        @if (message.IsRead && message.ReadTime.HasValue)
+                                        {
+                                            <div class="read-receipt">
+                                                Read @message.ReadTime.Value.ToShortTimeString()
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p>No messages available.</p>
+                        }
                     </div>
+
+                    <!-- Message Input Form -->
+                    <form class="add-message-form" id="messageForm" method="post"
+                          asp-action="AddMessage" asp-controller="Messaging"
+                          enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="studentId" value="@ViewBag.StudentId" />
+                        <input type="hidden" name="studentName" value="@displayStudentName" />
+                        <input type="hidden" name="conversationId" value="@conversationId" />
+
+                        <textarea name="content" id="contentInput" class="message-textarea"
+                                  placeholder="Type your message here..."></textarea>
+
+                        <div id="filePreview" class="file-preview mt-2"></div>
+
+                        <div class="d-flex align-items-center mt-2">
+                            <button type="button" class="btn btn-light me-2"
+                                    onclick="document.getElementById('fileInput').click();">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <input type="file" id="fileInput" name="attachment" hidden accept=".pdf,image/*" />
+
+                            <button type="submit" class="send-btn ms-auto">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
                         <!-- Upload progress & status -->
                         <div class="mt-2" id="uploadUi" hidden>
                             <progress id="uploadProgress" max="100" value="0" style="width:260px;"></progress>
@@ -197,7 +243,7 @@
                         </div>
 
 
-                </form>
+                    </form>
                 </div>
                 <!-- Confirm Delete Modal -->
                 <div class="modal-overlay" id="confirmModal">
@@ -248,11 +294,26 @@
             connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId);
         });
 
+        // Helper: turn an email-like string into "First Last" if needed
+        function parseDisplayName(name) {
+            if (!name) return "Unknown";
+            if (name.indexOf('@@') === -1 && name.indexOf(' ') !== -1) return name.trim();
+            let stem = name.split('@@')[0] || name;
+            stem = stem.replace(/[._-]/g, ' ').replace(/\s+/g, ' ').trim();
+            if (!stem) return name.trim();
+            const parts = stem.split(' ').filter(Boolean);
+            const cap = s => s ? (s[0].toUpperCase() + s.slice(1).toLowerCase()) : s;
+            if (parts.length === 1) return cap(parts[0]);
+            return cap(parts[0]) + ' ' + cap(parts[parts.length - 1]);
+        }
+
         connection.on("ReceiveMessage", (senderId, senderName, message, timestamp, messageId, attachmentUrl) => {
             const messageList = document.getElementById("messageList");
             messageList.querySelector("p")?.remove();
 
             const isSentByUser = senderId == @loggedInUserId;
+            const showName = isSentByUser ? "You" : parseDisplayName(senderName || "");
+
             const wrapper = document.createElement("div");
             wrapper.className = "message-wrapper " + (isSentByUser ? "sent" : "received");
             wrapper.setAttribute("data-message-id", messageId);
@@ -262,7 +323,7 @@
             }
 
             let header = `<div class="message-header">
-                                <small class="message-info">${senderName} - ${timestamp}</small>`;
+                                <small class="message-info">${showName} - ${timestamp}</small>`;
             if (isSentByUser) {
                 header += `<div class="message-actions">
                                     <i class="fas fa-edit edit-icon" title="Edit"></i>

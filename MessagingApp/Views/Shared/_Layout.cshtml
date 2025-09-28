@@ -1,22 +1,35 @@
+@using System.Security.Claims
 @{
-    var userName = User?.Identity?.IsAuthenticated == true ? User.Identity.Name : "Account";
     var title = ViewData["Title"] as string ?? "";
 
-    // Build initials (first + last)
-    var initials = "U";
-    if (!string.IsNullOrWhiteSpace(userName))
+    // Prefer Entra's display name; sensible fallbacks
+    string? nameDisplay = User.FindFirst("name")?.Value;                   // Entra "name" (Display name)
+    string? nameClaim = User.FindFirst(ClaimTypes.Name)?.Value;          // generic Name claim
+    string? given = User.FindFirst(ClaimTypes.GivenName)?.Value;
+    string? surname = User.FindFirst(ClaimTypes.Surname)?.Value;
+    string? preferredUser = User.FindFirst("preferred_username")?.Value;
+
+    string fullName = (nameDisplay
+                       ?? nameClaim
+                       ?? $"{(given ?? "").Trim()} {(surname ?? "").Trim()}".Trim()
+                       ?? preferredUser
+                       ?? (User.Identity?.Name ?? "Account"))
+                      .Trim();
+
+    // Initials from first + last token (or first two tokens)
+    string initials = "U";
+    if (!string.IsNullOrWhiteSpace(fullName))
     {
-        var parts = userName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length > 1)
-        {
-            initials = $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
-        }
-        else
-        {
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
             initials = parts[0][0].ToString().ToUpperInvariant();
-        }
+        else
+            initials = $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
     }
+
+    var userName = (User?.Identity?.IsAuthenticated ?? false) ? fullName : "Account";
 }
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

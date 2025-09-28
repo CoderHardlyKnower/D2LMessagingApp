@@ -1,23 +1,30 @@
-﻿namespace MessagingApp.Models
+using Microsoft.EntityFrameworkCore;
+
+namespace MessagingApp.Models
 {
+    /// <summary>
+    /// Represents a user. Updated for dynamic authentication.
+    /// </summary>
+    [Index(nameof(Email), IsUnique = false)]
+    [Index(nameof(ExternalObjectId), IsUnique = false)]
     public class User
     {
-        /// <summary>
-        /// Represents a user. Updated for dynamic authentication.
-        /// </summary>
         public int UserId { get; set; }
 
         // The full name of the user.
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         // The user's email, which serves as the login username
         public string Email { get; set; } = string.Empty;
 
-        // For now, no encryption
+        // Kept for backward compatibility; not used by Entra auth
         public string Password { get; set; } = string.Empty;
 
-        // User type: "student" or "instructor" (potential future usecase)
+        // User type: "student" or "instructor" (potential future use)
         public string? UserType { get; set; }
+
+        // OIDC object id from Entra; used to link external identity to local row
+        public string? ExternalObjectId { get; set; }
 
         public List<Enrollment>? Enrollments { get; set; } // Currently not used
 
