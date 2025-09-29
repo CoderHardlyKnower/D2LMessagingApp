@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
 using MessagingApp.Data;
 using MessagingApp.Models;
 using System;
@@ -11,13 +11,17 @@ namespace MessagingApp.Hubs
     /// SignalR hub for handling real-time messaging operations.
     /// Provides methods for sending, editing, deleting messages, and managing conversation groups.
     /// </summary>
+    using MessagingApp.Services;
+
     public class ChatHub : Hub
     {
         private readonly AppDbContext _context;
+        private readonly IUserNameLookup _names;  
 
-        public ChatHub(AppDbContext context)
+        public ChatHub(AppDbContext context, IUserNameLookup names)
         {
             _context = context;
+            _names = names;
         }
 
         public override async Task OnConnectedAsync()
@@ -35,7 +39,7 @@ namespace MessagingApp.Hubs
             var newMessage = new Message
             {
                 SenderId = senderId,
-                ReceiverId = 0, 
+                ReceiverId = 0,
                 Content = message ?? string.Empty,
                 CreatedTimestamp = DateTime.Now,
                 Timestamp = DateTime.Now,
@@ -46,15 +50,17 @@ namespace MessagingApp.Hubs
             _context.Messages.Add(newMessage);
             await _context.SaveChangesAsync();
 
-            // changed to always send 6 args: last one is attachmentUrl (null for text-only hub sends)
+            // Always send the canonical DisplayName (ignore the raw senderName arg)
+            var senderDisplayName = await _names.GetDisplayNameAsync(senderId);
+
             await Clients.Group("conversation_" + conversationId)
                 .SendAsync("ReceiveMessage",
                     senderId,
-                    senderName,
+                    senderDisplayName,                     
                     newMessage.Content,
                     newMessage.Timestamp.ToShortTimeString(),
                     newMessage.Id,
-                    null // attachmentUrl slot reserved, keeps shape identical to controller broadcast
+                    null // attachmentUrl placeholder for consistency
                 );
 
             await Clients.All.SendAsync("UpdateConversations");

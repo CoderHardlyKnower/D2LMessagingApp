@@ -22,37 +22,13 @@
                        ?? (User.Identity?.Name ?? "Account"))
                       .Trim();
 
-    string FirstCap(string s) => string.IsNullOrEmpty(s)
-        ? s
-        : char.ToUpperInvariant(s[0]) + (s.Length > 1 ? s.Substring(1).ToLowerInvariant() : "");
+    // Display names for others; "You" will be used for the logged-in user in the UI.
+    // Controller should populate ViewBag.UserNames with userId -> DisplayName.
+    var displayNames = userNames ?? new Dictionary<int, string>();
 
-    string ToFirstLast(string raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw)) return "Unknown";
-        // If it already looks like "First Last" (has a space and no '@'), use it
-        if (raw.Contains(' ') && !raw.Contains("@")) return raw.Trim();
+    // Header uses the provided display name directly.
+    string displayStudentName = string.IsNullOrWhiteSpace(studentName) ? "Unknown" : studentName.Trim();
 
-        // If it looks like an email, derive "First Last" from the local-part
-        var atIdx = raw.IndexOf('@');
-        var stem = atIdx > 0 ? raw.Substring(0, atIdx) : raw;
-
-        // Replace common separators with spaces, collapse whitespace
-        stem = stem.Replace('.', ' ').Replace('_', ' ').Replace('-', ' ');
-        stem = System.Text.RegularExpressions.Regex.Replace(stem, "\\s+", " ").Trim();
-
-        var tokens = stem.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (tokens.Length == 0) return raw.Trim();
-        if (tokens.Length == 1) return FirstCap(tokens[0]);
-
-        return $"{FirstCap(tokens[0])} {FirstCap(tokens[^1])}";
-    }
-
-    // Display names for others; "You" will be used for the logged-in user in the UI
-    var displayNames = userNames?.ToDictionary(kv => kv.Key, kv => ToFirstLast(kv.Value))
-                       ?? new Dictionary<int, string>();
-
-    // Header should also show a nice human name
-    string displayStudentName = ToFirstLast(studentName ?? "");
 }
 
 @section Styles {
@@ -294,17 +270,9 @@
             connection.invoke("MarkMessagesAsRead", @loggedInUserId, @conversationId);
         });
 
-        // Helper: turn an email-like string into "First Last" if needed
-        function parseDisplayName(name) {
-            if (!name) return "Unknown";
-            if (name.indexOf('@@') === -1 && name.indexOf(' ') !== -1) return name.trim();
-            let stem = name.split('@@')[0] || name;
-            stem = stem.replace(/[._-]/g, ' ').replace(/\s+/g, ' ').trim();
-            if (!stem) return name.trim();
-            const parts = stem.split(' ').filter(Boolean);
-            const cap = s => s ? (s[0].toUpperCase() + s.slice(1).toLowerCase()) : s;
-            if (parts.length === 1) return cap(parts[0]);
-            return cap(parts[0]) + ' ' + cap(parts[parts.length - 1]);
+               // Helper: trust server-provided DisplayName; just normalize/trim.
+        function normalizeName(name) {
+            return (name && String(name).trim()) || "Unknown";
         }
 
         connection.on("ReceiveMessage", (senderId, senderName, message, timestamp, messageId, attachmentUrl) => {
@@ -312,7 +280,7 @@
             messageList.querySelector("p")?.remove();
 
             const isSentByUser = senderId == @loggedInUserId;
-            const showName = isSentByUser ? "You" : parseDisplayName(senderName || "");
+            const showName = isSentByUser ? "You" : normalizeName(senderName || "");
 
             const wrapper = document.createElement("div");
             wrapper.className = "message-wrapper " + (isSentByUser ? "sent" : "received");

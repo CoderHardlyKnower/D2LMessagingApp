@@ -86,6 +86,9 @@ else
  */
 builder.Services.AddTransient<IClaimsTransformation, UserIdClaimTransformer>();
 
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IUserNameLookup, UserNameLookup>();
+
 var app = builder.Build();
 
 // =====================================
@@ -132,7 +135,6 @@ using (var scope = app.Services.CreateScope())
     }
     else if (Environment.GetEnvironmentVariable("RUN_AZURE_INIT") == "true")
     {
-        // Same behavior you wanted for Azure
         db.Database.Migrate();
         SeedCoursesIfEmpty(db);
     }
@@ -203,12 +205,28 @@ public class UserIdClaimTransformer : IClaimsTransformation
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
-        // Extract OIDC claims
+        // ==============================
+        // EXTRACT CLAIMS
+        // ==============================
         var oid = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.FindFirstValue("oid");
         var email = principal.FindFirstValue(ClaimTypes.Email);
-        var name = principal.Identity?.Name ?? principal.FindFirstValue("name") ?? email ?? "User";
 
-        // Find or create local user row
+        // Build best display name from OIDC claims
+        string? nameDisplay = principal.FindFirst("name")?.Value;               // Entra displayName
+        string? nameClaim = principal.FindFirst(ClaimTypes.Name)?.Value;
+        string? given = principal.FindFirst(ClaimTypes.GivenName)?.Value;
+        string? surname = principal.FindFirst(ClaimTypes.Surname)?.Value;
+        string? preferredU = principal.FindFirst("preferred_username")?.Value;
+
+        string fullName = (nameDisplay
+                           ?? nameClaim
+                           ?? $"{(given ?? "").Trim()} {(surname ?? "").Trim()}".Trim()
+                           ?? preferredU
+                           ?? (email ?? "User")).Trim();
+
+        // ==============================
+        // FIND OR CREATE USER
+        // ==============================
         MessagingApp.Models.User? user = null;
 
         if (!string.IsNullOrEmpty(oid))
@@ -221,9 +239,10 @@ public class UserIdClaimTransformer : IClaimsTransformation
 
         if (user == null)
         {
-            user = new MessagingApp.Models.User(name, email ?? "", password: "", userType: "student")
+            user = new MessagingApp.Models.User(name: fullName, email: email ?? "", password: "", userType: "student")
             {
-                ExternalObjectId = oid
+                ExternalObjectId = oid,
+                DisplayName = fullName // <<< persist canonical display name
             };
 
             db.Users.Add(user);
@@ -234,10 +253,14 @@ public class UserIdClaimTransformer : IClaimsTransformation
         {
             // ensure linkage is stored
             if (string.IsNullOrEmpty(user.ExternalObjectId) && !string.IsNullOrEmpty(oid))
-            {
                 user.ExternalObjectId = oid;
-                await db.SaveChangesAsync();
-            }
+
+            // keep DisplayName fresh if it changed in Entra
+            if (!string.IsNullOrWhiteSpace(fullName) &&
+                !string.Equals(user.DisplayName, fullName, StringComparison.Ordinal))
+                user.DisplayName = fullName;
+
+            await db.SaveChangesAsync();
         }
 
         var autoEnroll = config.GetValue<bool?>("Admin:AutoEnrollAllCourses") ?? false;
@@ -249,7 +272,6 @@ public class UserIdClaimTransformer : IClaimsTransformation
                                   .Select(e => e.CourseId)
                                   .ToListAsync();
 
-            // Enroll if they're new OR they currently have nothing
             if (isNew || already.Count == 0)
             {
                 var toAdd = existingCourseIds.Except(already).ToList();
@@ -262,11 +284,15 @@ public class UserIdClaimTransformer : IClaimsTransformation
             }
         }
 
-
-        // Add claims consumed by your app today
+        // ==============================
+        // ADD APP CLAIMS
+        // ==============================
         var id = (ClaimsIdentity)principal.Identity!;
         id.AddClaim(new Claim("UserId", user.UserId.ToString()));
         id.AddClaim(new Claim("UserType", user.UserType ?? "student"));
+
+        // convenience claim so Razor/_Layout can show friendly name without DB hit
+        id.AddClaim(new Claim("DisplayName", user.DisplayName));
 
         // Lightweight admin: mark role if email is in config list
         var adminEmails = config.GetSection("Admin:Emails").Get<string[]>() ?? Array.Empty<string>();

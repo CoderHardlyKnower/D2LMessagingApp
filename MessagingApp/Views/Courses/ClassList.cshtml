@@ -23,7 +23,7 @@
                 display: flex;
                 align-items: center;
                 gap: .5rem;
-                min-width: 0; 
+                min-width: 0;
             }
 
             .user-row .user-name {
@@ -31,7 +31,7 @@
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
-                max-width: 52vw; 
+                max-width: 52vw;
             }
 
             .user-row .user-email {
@@ -70,7 +70,11 @@
         <div class="p-2 text-center section-header">Instructor</div>
         <div class="name-label">First/Last Name</div>
         @{
-            var instructorDisplay = BuildDisplayName(Model.Instructor?.Name);
+            // Prefer persisted DisplayName; fall back to formatting the legacy Name
+            var instructorDisplay =
+            !string.IsNullOrWhiteSpace(Model.Instructor?.DisplayName)
+            ? Model.Instructor!.DisplayName
+            : BuildDisplayName(Model.Instructor?.Name);
         }
         <div class="user-container user-row">
             <div class="left-pack">
@@ -88,7 +92,11 @@
         <div class="students-container">
             @foreach (var student in Model.Students)
             {
-                var sDisplay = BuildDisplayName(student?.Name);
+                // Prefer persisted DisplayName; fall back to formatting the legacy Name
+                var sDisplay = !string.IsNullOrWhiteSpace(student.DisplayName)
+                ? student.DisplayName
+                : BuildDisplayName(student?.Name);
+
                 <a asp-action="Index"
                    asp-controller="Messaging"
                    asp-route-studentId="@student.UserId"
@@ -177,9 +185,7 @@
 
 @functions {
     /// <summary>
-    /// Strictly uses the provided display name (e.g., Entra 'displayName' / 'name' claim)
-    /// and formats it nicely. Does NOT derive from email.
-    /// Handles common variants like "Last, First".
+    /// Formats a provided name. If "Last, First [Middle]" -> "First [Middle] Last".
     /// </summary>
     public static string BuildDisplayName(string? rawName)
     {
@@ -188,7 +194,7 @@
 
         var name = rawName.Trim();
 
-        // If it's "Last, First [Middle]" -> convert to "First [Middle] Last"
+        // Convert "Last, First [Middle]" -> "First [Middle] Last"
         if (name.Contains(','))
         {
             var parts = name.Split(',', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

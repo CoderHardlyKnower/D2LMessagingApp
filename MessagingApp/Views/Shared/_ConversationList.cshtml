@@ -1,4 +1,4 @@
-﻿@* Partial View: _ConversationList *@
+@* Partial View: _ConversationList *@
 @* Displays Active Conversations on the Left Side of Messaging Screen *@
 
 <style>
@@ -255,13 +255,16 @@
             const badge = conversation.missedCount > 0
                 ? `<span class="badge bg-danger">${conversation.missedCount}</span>` : "";
 
-            // New: paperclip only when it's file-only
+            // Paperclip only when it's file-only
             const clip = conversation.isFileOnly ? `<i class="fas fa-paperclip me-1"></i>` : "";
+
+            // ✅ Use displayName (fallback to name)
+            const dn = (conversation.student && (conversation.student.displayName || conversation.student.name)) || "User";
 
             // Build preview with “You:” vs “Name:”, and clip if file-only
             let who = (conversation.lastMessageSenderId == window.loggedInUserId)
                 ? "You"
-                : conversation.student.name;
+                : dn;
 
             let previewBody = conversation.isFileOnly
                 ? `${clip}Attachment`
@@ -272,9 +275,9 @@
             const unreadClass = conversation.missedCount > 0 ? " unread" : "";
 
             const conversationHtml = `
-                <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(conversation.student.name)}&conversationId=${conversation.conversationId}" class="conversation ${unreadClass}">
+                <a href="/Messaging/Index?studentId=${conversation.student.userId}&studentName=${encodeURIComponent(dn)}&conversationId=${conversation.conversationId}" class="conversation ${unreadClass}">
                     <div class="conversation-header">
-                        <h4>${conversation.student.name}</h4>
+                        <h4>${dn}</h4>
                         <span class="timestamp">${time}</span>
                     </div>
                     <p>${conversation.missedCount > 0 ? `<b>${previewText}</b>` : previewText}</p>
