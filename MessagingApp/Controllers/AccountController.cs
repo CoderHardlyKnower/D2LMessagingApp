@@ -1,73 +1,65 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore;
-using MessagingApp.Data;
-using MessagingApp.Models;
 using System.Security.Claims;
 
 namespace MessagingApp.Controllers
 {
     public class AccountController : Controller
     {
-        private readonly AppDbContext _context;
-
-        public AccountController(AppDbContext context)
-        {
-            _context = context;
-        }
-
-        //Account/Login
+        // GET: /Account/Login
+        [AllowAnonymous]
         [HttpGet]
-        public IActionResult Login()
+        public IActionResult Login(string? returnUrl = null)
         {
-            return View();
-        }
+            // If already signed in, bounce to destination (Home by default)
+            if (User?.Identity?.IsAuthenticated == true)
+                return Redirect(string.IsNullOrWhiteSpace(returnUrl) ? Url.Action("Index", "Home")! : returnUrl);
 
-        //Account/Login
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(string email, string password)
-        {
-            // Lookup user dynamically from the database using email.
-            var user = await _context.Users.SingleOrDefaultAsync(u => u.Email == email);
-            if (user != null && user.Password == password)
+            // Challenge OIDC; on success, return to requested URL (or Home)
+            var props = new AuthenticationProperties
             {
-                // Create claims: use full name for display (ClaimTypes.Name)
-                // and store the email in a separate "Email" claim.
-                var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, user.Name),  // For display in header
-            new Claim("Email", user.Email),           // For filtering in CoursesController
-            new Claim("UserId", user.UserId.ToString()),
-            new Claim("UserType", user.UserType ?? "")
-        };
-
-                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-
-                var authProperties = new AuthenticationProperties
-                {
-                    IsPersistent = true // Simulate persistent login.
-                };
-
-                await HttpContext.SignInAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    new ClaimsPrincipal(claimsIdentity),
-                    authProperties);
-
-                return RedirectToAction("Index", "Home");
-            }
-
-            // If login fails, add an error and return to the view.
-            ModelState.AddModelError(string.Empty, "Invalid login attempt.");
-            return View();
+                RedirectUri = string.IsNullOrWhiteSpace(returnUrl) ? Url.Action("Index", "Home")! : returnUrl
+            };
+            return Challenge(props, OpenIdConnectDefaults.AuthenticationScheme);
         }
 
-        // GET: /Account/Logout
-        public async Task<IActionResult> Logout()
+        // POST: /Account/Logout
+        [HttpGet]
+        public IActionResult Logout()
         {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction("Login", "Account");
+            var props = new AuthenticationProperties
+            {
+                RedirectUri = Url.Action("Index", "Home")
+            };
+            return SignOut(props,
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                OpenIdConnectDefaults.AuthenticationScheme);
+        }
+
+        // GET: /Account/AccessDenied
+        [HttpGet]
+        public IActionResult AccessDenied()
+        {
+            return View(); // Optional Razor view that says "You don't have access."
+        }
+
+        // GET: /Account/Me  (handy for testing)
+        [Authorize]
+        [HttpGet]
+        public IActionResult Me()
+        {
+            var claims = User.Claims
+                .Select(c => new { c.Type, c.Value })
+                .OrderBy(c => c.Type)
+                .ToList();
+            return Json(new {
+                name = User.Identity?.Name,
+                authenticated = User.Identity?.IsAuthenticated ?? false,
+                claims
+            });
         }
     }
 }

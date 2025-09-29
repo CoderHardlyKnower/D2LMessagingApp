@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using MessagingApp.Data;
 using MessagingApp.Models;
 using System.Collections.Generic;
@@ -26,8 +26,23 @@ namespace MessagingApp.Controllers
         public async Task<IActionResult> LandingPage()
         {
             int userId = GetStudentId();
-            var courses = await GetStudentCourses(userId);
-            return View("CourseSelection", courses);
+
+            // first try: user’s enrolled courses
+            var myCourses = await _context.Enrollments
+                .Where(e => e.UserId == userId)
+                .Select(e => e.Course)
+                .AsNoTracking()
+                .ToListAsync();
+
+            // fallback: if none yet (brand-new user), show all courses
+            if (myCourses.Count == 0)
+            {
+                myCourses = await _context.Courses
+                    .AsNoTracking()
+                    .ToListAsync();
+            }
+
+            return View("CourseSelection", myCourses);
         }
 
         // Class list: display details (instructor and students) for a selected course.

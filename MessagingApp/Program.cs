@@ -1,18 +1,43 @@
-using Microsoft.EntityFrameworkCore;
 using System;
-using MessagingApp.Data;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using MessagingApp.Models;
-using MessagingApp.Controllers;
+using System.Security.Claims;
+using Azure.Identity;
 using Azure.Storage.Blobs;
+using MessagingApp.Controllers;
+using MessagingApp.Data;
+using MessagingApp.Models;
 using MessagingApp.Services;
-using Azure.Core;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Web;
+using Microsoft.Identity.Web.UI;
+
 var builder = WebApplication.CreateBuilder(args);
 
+// =====================================
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+// =====================================
+builder.Services.AddControllersWithViews().AddMicrosoftIdentityUI();
 
+builder.Services
+    .AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApp(options =>
+    {
+        builder.Configuration.Bind("AzureAd", options);
+
+        // FORCE authorization code flow (not implicit id_token)
+        options.ResponseType = "code";
+        options.UsePkce = true;          // default true in recent versions, set explicitly to be clear
+        options.SaveTokens = true;       // optional: keep tokens in auth cookie if you ever need them
+    });
+
+builder.Services.AddAuthorization();
+
+// Blob Storage:
+// Keep your existing connection-string approach (works with local emulator or prod).
+// You can move to Managed Identity later without touching the app code that consumes IFileStorageService.
 builder.Services.AddSingleton(sp =>
 {
     var cs = builder.Configuration.GetConnectionString("AzureBlobStorage")
@@ -23,7 +48,7 @@ builder.Services.AddSingleton(sp =>
     return new BlobServiceClient(cs);
 });
 
-// 2) Use Azure-backed implementation (remove the Local one)
+// Use Azure-backed implementation (remove the Local one)
 builder.Services.AddTransient<IFileStorageService, AzureBlobStorageService>();
 
 // (Optional but recommended) raise body size limits for large PDFs/images
@@ -32,17 +57,10 @@ builder.Services.Configure<FormOptions>(o =>
     o.MultipartBodyLengthLimit = 50L * 1024 * 1024; // 50 MB
 });
 
-// Configure SQL Server 
+// Configure SQL Server (still using your connection string).
+// Later, you can flip to Entra auth / Managed Identity by changing only the connection string.
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Cookie authentication
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.LoginPath = "/Account/Login";
-        options.LogoutPath = "/Account/Logout";
-    });
 
 // Application Insights
 builder.Services.AddApplicationInsightsTelemetry();
@@ -60,9 +78,22 @@ else
     builder.Services.AddSignalR();
 }
 
+/*
+ * Claims transformer:
+ * - Ensures a local User row exists on first Entra sign-in (creates it if missing).
+ * - Adds "UserId" claim so existing controllers/hub continue to work unchanged.
+ * - Optionally auto-enrolls new users into all existing courses for easy demos.
+ */
+builder.Services.AddTransient<IClaimsTransformation, UserIdClaimTransformer>();
+
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IUserNameLookup, UserNameLookup>();
+
 var app = builder.Build();
 
+// =====================================
 // Configure the HTTP request pipeline.
+// =====================================
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -77,128 +108,199 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// MVC route
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// Map the SignalR hub
-app.MapHub<MessagingApp.Hubs.ChatHub>("/chathub");
+// Map the SignalR hub (now requires auth)
+app.MapHub<MessagingApp.Hubs.ChatHub>("/chathub").RequireAuthorization();
 
-
+/*
+ * Database initialization:
+ * - Keep automatic migrations.
+ * - Remove people/password seeding.
+ * - Optionally seed Courses only, so new Entra users can be enrolled quickly (auto or manual).
+ */
 using (var scope = app.Services.CreateScope())
 {
     var env = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
-    if (!env.IsDevelopment() && Environment.GetEnvironmentVariable("RUN_AZURE_INIT") == "true")
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    if (env.IsDevelopment())
     {
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        db.Database.Migrate();     
-
-        if (!db.Users.Any())
-            SeedDatabase(db);
+        // Always ensure schema + seed Courses when running locally
+        db.Database.Migrate();
+        SeedCoursesIfEmpty(db);
+    }
+    else if (Environment.GetEnvironmentVariable("RUN_AZURE_INIT") == "true")
+    {
+        db.Database.Migrate();
+        SeedCoursesIfEmpty(db);
     }
 }
+
 
 app.Run();
 
 
-// ---- Seed method (unchanged) ----
-void SeedDatabase(AppDbContext context)
-{
-    if (!context.Users.Any())
-    {
-        context.Users.AddRange(new List<MessagingApp.Models.User>
-        {
-            new MessagingApp.Models.User("Austin Brown", "Abrown9034@conestogac.on.ca", "password1", "student"),
-            new MessagingApp.Models.User("Khemara Oeun", "Koeun8402@conestogac.on.ca", "password2", "student"),
-            new MessagingApp.Models.User("Amanda Esteves", "Aesteves3831@conestogac.on.ca", "password3", "student"),
-            new MessagingApp.Models.User("Tristan Lagace", "Tlagace9030@conestogac.on.ca", "password4", "student"),
-            new MessagingApp.Models.User("Isabella Ramirez", "iramirez@conestogac.on.ca", "password5", "student"),
-            new MessagingApp.Models.User("Mohammed Al-Farouq", "maalfarouq@conestogac.on.ca", "password6", "student"),
-            new MessagingApp.Models.User("Sienna Nguyen", "snguyen@conestogac.on.ca", "password7", "student"),
-            new MessagingApp.Models.User("Diego Morales", "dmorales@conestogac.on.ca", "password8", "student")
-        });
-        context.SaveChanges();
-    }
+// =====================
+// Helpers & Transformers
+// =====================
 
-    var instructor = context.Users.FirstOrDefault(u => u.UserType == "instructor");
+void SeedCoursesIfEmpty(AppDbContext db)
+{
+    // 1) Ensure an instructor exists (FK target)
+    var instructor = db.Users.FirstOrDefault(u => u.UserType == "instructor");
     if (instructor == null)
     {
-        instructor = new MessagingApp.Models.User("Caroline Mercer", "c.mercer@conestogac.on.ca", "password5", "instructor");
-        context.Users.Add(instructor);
-        context.SaveChanges();
+        instructor = new MessagingApp.Models.User(
+            name: "System Instructor",
+            email: "instructor@local",
+            password: ""  // not used with Entra, but column is NOT NULL
+        )
+        {
+            UserType = "instructor",
+            ExternalObjectId = null
+        };
+        db.Users.Add(instructor);
+        db.SaveChanges(); // get real UserId
     }
 
-    if (!context.Courses.Any())
+    // 2) Seed courses only if none exist (NOTE: Course has Name, not Title)
+    if (!db.Courses.Any())
     {
-        int instructorId = context.Users.First(u => u.UserType == "instructor").UserId;
-        context.Courses.AddRange(new List<MessagingApp.Models.Course>
-        {
-            new MessagingApp.Models.Course("Web Programming", instructorId),
-            new MessagingApp.Models.Course("C# Programming", instructorId),
-            new MessagingApp.Models.Course("Mobile Development", instructorId),
-            new MessagingApp.Models.Course("User Experience", instructorId),
-            new MessagingApp.Models.Course("Programming Concepts II", instructorId),
-            new MessagingApp.Models.Course("Database:SQL", instructorId)
-        });
-        context.SaveChanges();
+        var i = instructor.UserId;
+        db.Courses.AddRange(
+            new MessagingApp.Models.Course("Web Programming", i),
+            new MessagingApp.Models.Course("C# Programming", i),
+            new MessagingApp.Models.Course("Mobile Development", i),
+            new MessagingApp.Models.Course("User Experience", i),
+            new MessagingApp.Models.Course("Programming Concepts II", i),
+            new MessagingApp.Models.Course("Database:SQL", i)
+        );
+        db.SaveChanges();
     }
+}
 
-    if (!context.Enrollments.Any())
+
+/*
+ * UserIdClaimTransformer
+ * - Creates local user record mapped to Entra account (by OID/email).
+ * - Injects "UserId" (and "UserType") claims expected by your existing controllers/hub.
+ * - Optionally auto-enrolls newly-created users into existing courses for demo convenience.
+ */
+public class UserIdClaimTransformer : IClaimsTransformation
+{
+    private readonly IServiceProvider _sp;
+
+    public UserIdClaimTransformer(IServiceProvider sp) => _sp = sp;
+
+    public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {
-        if (context.Users.Any() && context.Courses.Any())
-        {
-            var students = context.Users.Where(u => u.UserType == "student").ToList();
-            var courses = context.Courses.ToList();
+        if (!(principal.Identity?.IsAuthenticated ?? false)) return principal;
+        if (principal.HasClaim(c => c.Type == "UserId")) return principal;
 
-            context.Enrollments.AddRange(new List<MessagingApp.Models.Enrollment>
+        using var scope = _sp.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+        // ==============================
+        // EXTRACT CLAIMS
+        // ==============================
+        var oid = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.FindFirstValue("oid");
+        var email = principal.FindFirstValue(ClaimTypes.Email);
+
+        // Build best display name from OIDC claims
+        string? nameDisplay = principal.FindFirst("name")?.Value;               // Entra displayName
+        string? nameClaim = principal.FindFirst(ClaimTypes.Name)?.Value;
+        string? given = principal.FindFirst(ClaimTypes.GivenName)?.Value;
+        string? surname = principal.FindFirst(ClaimTypes.Surname)?.Value;
+        string? preferredU = principal.FindFirst("preferred_username")?.Value;
+
+        string fullName = (nameDisplay
+                           ?? nameClaim
+                           ?? $"{(given ?? "").Trim()} {(surname ?? "").Trim()}".Trim()
+                           ?? preferredU
+                           ?? (email ?? "User")).Trim();
+
+        // ==============================
+        // FIND OR CREATE USER
+        // ==============================
+        MessagingApp.Models.User? user = null;
+
+        if (!string.IsNullOrEmpty(oid))
+            user = await db.Users.FirstOrDefaultAsync(u => u.ExternalObjectId == oid);
+
+        if (user == null && !string.IsNullOrEmpty(email))
+            user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+        var isNew = false;
+
+        if (user == null)
+        {
+            user = new MessagingApp.Models.User(name: fullName, email: email ?? "", password: "", userType: "student")
             {
-                new MessagingApp.Models.Enrollment(students[0].UserId, courses[0].CourseId),
-                new MessagingApp.Models.Enrollment(students[0].UserId, courses[2].CourseId),
-                new MessagingApp.Models.Enrollment(students[0].UserId, courses[3].CourseId),
-                new MessagingApp.Models.Enrollment(students[0].UserId, courses[4].CourseId),
+                ExternalObjectId = oid,
+                DisplayName = fullName // <<< persist canonical display name
+            };
 
-                new MessagingApp.Models.Enrollment(students[1].UserId, courses[0].CourseId),
-                new MessagingApp.Models.Enrollment(students[1].UserId, courses[2].CourseId),
-                new MessagingApp.Models.Enrollment(students[1].UserId, courses[3].CourseId),
-                new MessagingApp.Models.Enrollment(students[1].UserId, courses[4].CourseId),
-
-                new MessagingApp.Models.Enrollment(students[2].UserId, courses[0].CourseId),
-                new MessagingApp.Models.Enrollment(students[2].UserId, courses[2].CourseId),
-                new MessagingApp.Models.Enrollment(students[2].UserId, courses[3].CourseId),
-                new MessagingApp.Models.Enrollment(students[2].UserId, courses[4].CourseId),
-
-                new MessagingApp.Models.Enrollment(students[3].UserId, courses[0].CourseId),
-                new MessagingApp.Models.Enrollment(students[3].UserId, courses[2].CourseId),
-                new MessagingApp.Models.Enrollment(students[3].UserId, courses[3].CourseId),
-                new MessagingApp.Models.Enrollment(students[3].UserId, courses[5].CourseId),
-
-                new MessagingApp.Models.Enrollment(students[4].UserId, courses[0].CourseId),
-                new MessagingApp.Models.Enrollment(students[4].UserId, courses[1].CourseId),
-                new MessagingApp.Models.Enrollment(students[4].UserId, courses[2].CourseId),
-                new MessagingApp.Models.Enrollment(students[4].UserId, courses[3].CourseId),
-                new MessagingApp.Models.Enrollment(students[4].UserId, courses[5].CourseId),
-
-                new MessagingApp.Models.Enrollment(students[5].UserId, courses[0].CourseId),
-                new MessagingApp.Models.Enrollment(students[5].UserId, courses[1].CourseId),
-                new MessagingApp.Models.Enrollment(students[5].UserId, courses[2].CourseId),
-                new MessagingApp.Models.Enrollment(students[5].UserId, courses[3].CourseId),
-                new MessagingApp.Models.Enrollment(students[5].UserId, courses[5].CourseId),
-
-                new MessagingApp.Models.Enrollment(students[6].UserId, courses[0].CourseId),
-                new MessagingApp.Models.Enrollment(students[6].UserId, courses[1].CourseId),
-                new MessagingApp.Models.Enrollment(students[6].UserId, courses[2].CourseId),
-                new MessagingApp.Models.Enrollment(students[6].UserId, courses[3].CourseId),
-                new MessagingApp.Models.Enrollment(students[6].UserId, courses[5].CourseId),
-
-                new MessagingApp.Models.Enrollment(students[7].UserId, courses[0].CourseId),
-                new MessagingApp.Models.Enrollment(students[7].UserId, courses[1].CourseId),
-                new MessagingApp.Models.Enrollment(students[7].UserId, courses[2].CourseId),
-                new MessagingApp.Models.Enrollment(students[7].UserId, courses[3].CourseId),
-                new MessagingApp.Models.Enrollment(students[7].UserId, courses[5].CourseId),
-            });
-
-            context.SaveChanges();
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+            isNew = true;
         }
+        else
+        {
+            // ensure linkage is stored
+            if (string.IsNullOrEmpty(user.ExternalObjectId) && !string.IsNullOrEmpty(oid))
+                user.ExternalObjectId = oid;
+
+            // keep DisplayName fresh if it changed in Entra
+            if (!string.IsNullOrWhiteSpace(fullName) &&
+                !string.Equals(user.DisplayName, fullName, StringComparison.Ordinal))
+                user.DisplayName = fullName;
+
+            await db.SaveChangesAsync();
+        }
+
+        var autoEnroll = config.GetValue<bool?>("Admin:AutoEnrollAllCourses") ?? false;
+        if (autoEnroll)
+        {
+            var existingCourseIds = await db.Courses.Select(c => c.CourseId).ToListAsync();
+            var already = await db.Enrollments
+                                  .Where(e => e.UserId == user.UserId)
+                                  .Select(e => e.CourseId)
+                                  .ToListAsync();
+
+            if (isNew || already.Count == 0)
+            {
+                var toAdd = existingCourseIds.Except(already).ToList();
+                if (toAdd.Count > 0)
+                {
+                    foreach (var cid in toAdd)
+                        db.Enrollments.Add(new MessagingApp.Models.Enrollment(user.UserId, cid));
+                    await db.SaveChangesAsync();
+                }
+            }
+        }
+
+        // ==============================
+        // ADD APP CLAIMS
+        // ==============================
+        var id = (ClaimsIdentity)principal.Identity!;
+        id.AddClaim(new Claim("UserId", user.UserId.ToString()));
+        id.AddClaim(new Claim("UserType", user.UserType ?? "student"));
+
+        // convenience claim so Razor/_Layout can show friendly name without DB hit
+        id.AddClaim(new Claim("DisplayName", user.DisplayName));
+
+        // Lightweight admin: mark role if email is in config list
+        var adminEmails = config.GetSection("Admin:Emails").Get<string[]>() ?? Array.Empty<string>();
+        if (!string.IsNullOrEmpty(email) && adminEmails.Contains(email, StringComparer.OrdinalIgnoreCase))
+        {
+            id.AddClaim(new Claim(ClaimTypes.Role, "Admin"));
+        }
+
+        return principal;
     }
 }

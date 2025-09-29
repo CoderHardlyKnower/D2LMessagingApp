@@ -41,9 +41,12 @@ namespace MessagingApp.Controllers
         /// </summary>
         public async Task<IActionResult> Index(int studentId, string studentName)
         {
-            int loggedInUserId = int.Parse(User.FindFirst("UserId").Value);
+            int loggedInUserId = int.Parse(User.FindFirst("UserId")!.Value);
+
+            // Ensure a two-party conversation exists
             var conversation = await GetOrCreateConversationAsync(loggedInUserId, studentId);
 
+            // Update LastRead for the current user
             var participant = conversation.Participants.FirstOrDefault(p => p.UserId == loggedInUserId);
             if (participant != null)
             {
@@ -51,18 +54,30 @@ namespace MessagingApp.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            // Load messages for the conversation
             var messages = await _context.Messages
                 .Where(m => m.ConversationId == conversation.ConversationId)
                 .OrderBy(m => m.CreatedTimestamp)
+                .AsNoTracking()
                 .ToListAsync();
 
-            var senderIds = messages.Select(m => m.SenderId).Distinct().ToList();
-            var userNames = await _context.Users
-                .Where(u => senderIds.Contains(u.UserId))
-                .ToDictionaryAsync(u => u.UserId, u => u.Name);
+            // Build a userId -> DisplayName map (used by the Razor view to label bubbles)
+            var participantIds = conversation.Participants.Select(p => p.UserId).ToList();
+            var senderIds = messages.Select(m => m.SenderId).Distinct();
+            var allIds = participantIds.Concat(senderIds).Distinct().ToList();
 
-            ViewBag.UserNames = userNames;
-            ViewBag.StudentName = studentName;
+            var names = await _context.Users
+                .Where(u => allIds.Contains(u.UserId))
+                .Select(u => new { u.UserId, u.DisplayName })
+                .ToDictionaryAsync(x => x.UserId, x => x.DisplayName);
+
+            // Header shows the other participant's DisplayName
+            var studentDisplay = names.TryGetValue(studentId, out var dn) && !string.IsNullOrWhiteSpace(dn)
+                ? dn
+                : "User";
+
+            ViewBag.UserNames = names;                // userId -> DisplayName
+            ViewBag.StudentName = studentDisplay;     // header name
             ViewBag.StudentId = studentId;
             ViewBag.ConversationId = conversation.ConversationId;
             return View(messages);
@@ -83,11 +98,8 @@ namespace MessagingApp.Controllers
         {
             // Allow: text OR file OR both
             if (string.IsNullOrWhiteSpace(content) && (attachment == null || attachment.Length == 0))
-            {
                 return BadRequest("No content or attachment provided.");
-            }
 
-            // --- Server-side guardrails ---
             const long MaxUploadBytes = 25L * 1024 * 1024; // 25 MB
             var allowedExt = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf" };
@@ -103,7 +115,6 @@ namespace MessagingApp.Controllers
                 if (!allowedExt.Contains(ext))
                     return BadRequest("Unsupported file type. Allowed: images (png/jpg/jpeg/gif/webp) and PDF.");
 
-                // Upload to Blob Storage (IFileStorageService)
                 using var stream = attachment.OpenReadStream();
                 attachmentUrl = await _fileStorage.UploadAsync(stream, attachment.FileName);
             }
@@ -119,18 +130,27 @@ namespace MessagingApp.Controllers
                 ReceiverId = studentId,
                 ConversationId = conversationId,
                 IsRead = false,
-                // requires public string? AttachmentUrl { get; set; } in your model
                 AttachmentUrl = attachmentUrl
             };
 
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
-            // Push to clients in this conversation (your client already listens for ReceiveMessage)
+            // Look up the friendly DisplayName for the sender
+            var displayName = User.FindFirst("DisplayName")?.Value;
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                displayName = await _context.Users
+                    .Where(u => u.UserId == loggedInUserId)
+                    .Select(u => u.DisplayName)
+                    .FirstOrDefaultAsync() ?? "User";
+            }
+
+            // Broadcast to all clients in this conversation group
             await _hub.Clients.Group($"conversation_{conversationId}")
                 .SendAsync("ReceiveMessage",
                     message.SenderId,
-                    User.Identity!.Name,
+                    displayName,                                  // << DisplayName, not email
                     message.Content,
                     message.Timestamp.ToShortTimeString(),
                     message.Id,
@@ -140,6 +160,7 @@ namespace MessagingApp.Controllers
 
             return Ok(new { messageId = message.Id, attachment = message.AttachmentUrl != null });
         }
+
 
 
         /// <summary>
@@ -184,11 +205,10 @@ namespace MessagingApp.Controllers
                 select new
                 {
                     c.ConversationId,
-                    LastMessage = lastMsg.Content,                 
+                    LastMessage = lastMsg.Content,
                     LastMessageTimestamp = lastMsg.Timestamp,
                     LastMessageSenderId = lastMsg.SenderId,
 
-                    // New: attachment flags for UI
                     HasAttachment = !string.IsNullOrEmpty(lastMsg.AttachmentUrl),
                     IsFileOnly = !string.IsNullOrEmpty(lastMsg.AttachmentUrl) && string.IsNullOrWhiteSpace(lastMsg.Content),
 
@@ -198,7 +218,7 @@ namespace MessagingApp.Controllers
 
                     Student = c.Participants
                                 .Where(p => p.UserId != loggedInUserId)
-                                .Select(p => new { p.User.UserId, p.User.Name })
+                                .Select(p => new { p.User.UserId, DisplayName = p.User.DisplayName }) // << DisplayName
                                 .FirstOrDefault()
                 }
             )

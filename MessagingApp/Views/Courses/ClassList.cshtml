@@ -1,4 +1,4 @@
-﻿@model MessagingApp.Models.ClassListViewModel
+@model MessagingApp.Models.ClassListViewModel
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -10,6 +10,48 @@
     <title>Class List - MessagingApp</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="~/css/classlist.css" asp-append-version="true" />
+    <style>
+        .user-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            width: 100%;
+        }
+
+            .user-row .left-pack {
+                display: flex;
+                align-items: center;
+                gap: .5rem;
+                min-width: 0;
+            }
+
+            .user-row .user-name {
+                font-weight: 500;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 52vw;
+            }
+
+            .user-row .user-email {
+                font-size: .82rem;
+                color: #6c757d;
+                white-space: nowrap;
+                opacity: .95;
+            }
+
+        .student-row.selected-row {
+            outline: 2px solid rgba(13,110,253,.25);
+            border-radius: 8px;
+            background: rgba(13,110,253,.05);
+        }
+
+        .full-row-link {
+            text-decoration: none;
+            color: inherit;
+        }
+    </style>
 </head>
 <body>
     <div class="class-list-container">
@@ -27,8 +69,21 @@
         <!-- Instructor Section -->
         <div class="p-2 text-center section-header">Instructor</div>
         <div class="name-label">First/Last Name</div>
-        <div class="user-container">
-            <div class="user">@Model.Instructor.Name</div>
+        @{
+            // Prefer persisted DisplayName; fall back to formatting the legacy Name
+            var instructorDisplay =
+            !string.IsNullOrWhiteSpace(Model.Instructor?.DisplayName)
+            ? Model.Instructor!.DisplayName
+            : BuildDisplayName(Model.Instructor?.Name);
+        }
+        <div class="user-container user-row">
+            <div class="left-pack">
+                <div class="user user-name">@instructorDisplay</div>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.Instructor?.Email))
+            {
+                <div class="user-email">@Model.Instructor.Email</div>
+            }
         </div>
 
         <!-- Students Section -->
@@ -37,18 +92,28 @@
         <div class="students-container">
             @foreach (var student in Model.Students)
             {
+                // Prefer persisted DisplayName; fall back to formatting the legacy Name
+                var sDisplay = !string.IsNullOrWhiteSpace(student.DisplayName)
+                ? student.DisplayName
+                : BuildDisplayName(student?.Name);
+
                 <a asp-action="Index"
                    asp-controller="Messaging"
                    asp-route-studentId="@student.UserId"
-                   asp-route-studentName="@student.Name"
+                   asp-route-studentName="@sDisplay"
                    class="text-decoration-none full-row-link">
-                    <div class="user-container student-row">
-                        <input type="checkbox" class="student-checkbox" value="@student.UserId" data-studentname="@student.Name" />
-                        <div class="user">@student.Name</div>
+                    <div class="user-container student-row user-row">
+                        <div class="left-pack">
+                            <input type="checkbox" class="student-checkbox" value="@student.UserId" data-studentname="@sDisplay" />
+                            <div class="user user-name">@sDisplay</div>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(student.Email))
+                        {
+                            <div class="user-email">@student.Email</div>
+                        }
                     </div>
                 </a>
             }
-
         </div>
     </div>
 
@@ -117,3 +182,33 @@
     </script>
 </body>
 </html>
+
+@functions {
+    /// <summary>
+    /// Formats a provided name. If "Last, First [Middle]" -> "First [Middle] Last".
+    /// </summary>
+    public static string BuildDisplayName(string? rawName)
+    {
+        if (string.IsNullOrWhiteSpace(rawName))
+            return "User";
+
+        var name = rawName.Trim();
+
+        // Convert "Last, First [Middle]" -> "First [Middle] Last"
+        if (name.Contains(','))
+        {
+            var parts = name.Split(',', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length == 2)
+            {
+                var last = parts[0];
+                var first = parts[1];
+                name = $"{first} {last}".Trim();
+            }
+        }
+
+        // Collapse multiple spaces
+        name = System.Text.RegularExpressions.Regex.Replace(name, "\\s+", " ");
+
+        return name;
+    }
+}
