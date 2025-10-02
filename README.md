@@ -50,9 +50,9 @@ flowchart LR
 - [x] Basic conversations & classlist integration  
 - [x] SignalR real-time messaging hub  
 - [x] Read receipts, typing indicators  
-- [ ] Replace local login with **Entra External ID (OIDC)**  
-- [ ] Deploy to **Azure App Service** with CI/CD  
-- [ ] Add **Blob Storage** for file sharing  
+- [x] Replace local login with **Entra External ID (OIDC)**  
+- [x] Deploy to **Azure App Service** with CI/CD  
+- [x] Add **Blob Storage** for file sharing  
 - [ ] IaC with Bicep for full reproducible infrastructure  
 - [ ] Dashboarding via Application Insights KQL queries  
 
