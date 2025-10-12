@@ -13,12 +13,13 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
+using Microsoft.Graph;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =====================================
-// Add services to the container.
-// =====================================
+// ===================
+// Authentication setup
+// ===================
 builder.Services.AddControllersWithViews().AddMicrosoftIdentityUI();
 
 builder.Services
@@ -26,12 +27,14 @@ builder.Services
     .AddMicrosoftIdentityWebApp(options =>
     {
         builder.Configuration.Bind("AzureAd", options);
-
-        // FORCE authorization code flow (not implicit id_token)
         options.ResponseType = "code";
-        options.UsePkce = true;          // default true in recent versions, set explicitly to be clear
-        options.SaveTokens = true;       // optional: keep tokens in auth cookie if you ever need them
-    });
+        options.UsePkce = true;
+        options.SaveTokens = true;
+    })
+    .EnableTokenAcquisitionToCallDownstreamApi()
+    .AddMicrosoftGraph(builder.Configuration.GetSection("Graph"))
+    .AddInMemoryTokenCaches();
+
 
 builder.Services.AddAuthorization();
 
@@ -189,6 +192,7 @@ void SeedCoursesIfEmpty(AppDbContext db)
  * - Creates local user record mapped to Entra account (by OID/email).
  * - Injects "UserId" (and "UserType") claims expected by your existing controllers/hub.
  * - Optionally auto-enrolls newly-created users into existing courses for demo convenience.
+ * - NEW: Maps Entra group membership (LMS-Admins / LMS-Instructors) to app role claims via Microsoft Graph.
  */
 public class UserIdClaimTransformer : IClaimsTransformation
 {
@@ -299,6 +303,48 @@ public class UserIdClaimTransformer : IClaimsTransformation
         if (!string.IsNullOrEmpty(email) && adminEmails.Contains(email, StringComparer.OrdinalIgnoreCase))
         {
             id.AddClaim(new Claim(ClaimTypes.Role, "Admin"));
+        }
+
+        // ==============================================
+        // Map Entra group membership -> role claims
+        // ==============================================
+        try
+        {
+            var graph = scope.ServiceProvider.GetRequiredService<GraphServiceClient>();
+
+            // Retrieve all groups the user is a member of (transitive for nested)
+            var groups = new List<Microsoft.Graph.Models.DirectoryObject>();
+            var page = await graph.Me.TransitiveMemberOf.GetAsync(r =>
+            {
+                r.QueryParameters.Select = new[] { "id", "displayName", "@odata.type" };
+                r.QueryParameters.Top = 999;
+            });
+
+            while (page?.Value != null)
+            {
+                groups.AddRange(page.Value);
+                if (page.OdataNextLink == null) break;
+                page = await graph.Me.TransitiveMemberOf.WithUrl(page.OdataNextLink).GetAsync();
+            }
+
+            bool inAdmins = groups.OfType<Microsoft.Graph.Models.Group>()
+                .Any(g => string.Equals(g.DisplayName, "LMS-Admins", StringComparison.OrdinalIgnoreCase));
+            bool inInstructors = groups.OfType<Microsoft.Graph.Models.Group>()
+                .Any(g => string.Equals(g.DisplayName, "LMS-Instructors", StringComparison.OrdinalIgnoreCase));
+
+            // add role claims (so [Authorize(Roles="Admin")] etc. work)
+            if (inAdmins)
+                id.AddClaim(new Claim(ClaimTypes.Role, "Admin"));
+            else if (inInstructors)
+                id.AddClaim(new Claim(ClaimTypes.Role, "Instructor"));
+            else
+                id.AddClaim(new Claim(ClaimTypes.Role, "Student"));
+        }
+        catch
+        {
+            // Graph unavailable: fallback to student unless already admin via config
+            if (!principal.IsInRole("Admin") && !principal.IsInRole("Instructor"))
+                id.AddClaim(new Claim(ClaimTypes.Role, "Student"));
         }
 
         return principal;
